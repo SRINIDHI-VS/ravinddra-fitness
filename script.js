@@ -1,7 +1,17 @@
 (function () {
   "use strict";
 
-  var supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  // persistSession: false is deliberate — this is the PUBLIC enrollment form.
+  // Supabase Auth sessions are saved to localStorage per project, shared across
+  // every page on this domain. If Ravi (or anyone) is logged into /admin.html
+  // in the same browser, a default client here would silently pick up his
+  // admin session and upload as him instead of as an anonymous visitor —
+  // which fails, because only the "anon" role is allowed to upload proofs,
+  // not "authenticated". Forcing a clean, session-less client keeps this form
+  // always anonymous, regardless of what else is logged in on this browser.
+  var supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
 
   var PATHS = {
     New: { steps: ["details", "terms", "payment", "proof"], labels: ["Details", "Terms", "Payment", "Proof"] },
