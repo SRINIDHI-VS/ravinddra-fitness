@@ -64,6 +64,7 @@
 .badge-type { background: var(--surface-raised); color: var(--text-muted); border: 1px solid var(--border); }
 .badge-pending { background: var(--warn-bg); color: var(--warn); }
 .badge-confirmed { background: var(--success-bg); color: var(--success); }
+.badge-rejected { background: var(--danger-bg); color: var(--danger); cursor: help; }
 .badge-overdue { background: var(--danger-bg); color: var(--danger); }
 .badge-soon { background: var(--warn-bg); color: var(--warn); }
 .badge-ok { background: var(--success-bg); color: var(--success); }
@@ -76,7 +77,19 @@
 .row-btn:first-child { margin-top: 0; }
 .row-btn:hover { border-color: var(--accent); }
 .row-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.confirm-btn { display: block; }
+.confirm-btn, .reject-btn, .undo-btn, .edit-client-btn { display: block; }
+.reject-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+.client-row { cursor: pointer; }
+.client-row:hover td { background: var(--surface-raised); }
+.expand-btn {
+  font: inherit; font-size: 10px; border: none; background: transparent; color: var(--text-muted);
+  cursor: pointer; padding: 0 8px 0 0; vertical-align: middle;
+}
+.client-history-row td { padding: 0 16px 16px; border-bottom: 1px solid var(--border); }
+.client-history-row:last-child td { border-bottom: none; }
+.history-table { min-width: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.history-table th, .history-table td { padding: 10px 14px; }
 
 @media (max-width: 620px) {
   .stat-grid { grid-template-columns: 1fr; }

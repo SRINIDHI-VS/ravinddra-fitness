@@ -92,9 +92,9 @@
           </div>
           <div class="field" id="fieldDiet">
             <label>Diet</label>
-            <div class="pillgroup" id="dietPills">
-              <div class="pill" data-val="Veg">Veg</div>
-              <div class="pill" data-val="Non-veg">Non-veg</div>
+            <div class="pillgroup" id="dietPills" role="group" aria-label="Diet">
+              <div class="pill" data-val="Veg" role="button" tabindex="0">Veg</div>
+              <div class="pill" data-val="Non-veg" role="button" tabindex="0">Non-veg</div>
             </div>
             <p class="error-msg">Choose Veg or Non-veg.</p>
           </div>
@@ -214,12 +214,23 @@
           <div id="uploadPrompt">
             <div class="icon">📎</div>
             <div><strong>Tap to upload screenshot</strong></div>
-            <div class="hint">JPG or PNG, up to 5 MB</div>
+            <div class="hint">JPG, PNG or WebP, up to 5 MB</div>
           </div>
           <img class="preview-img" id="previewImg" alt="Payment screenshot preview" />
         </label>
         <input type="file" id="proofFile" accept="image/png,image/jpeg,image/webp" />
-        <p class="file-error-msg" id="fileError">Please upload a JPG or PNG under 5 MB.</p>
+        <p class="file-error-msg" id="fileError">Please upload a JPG, PNG or WebP under 5 MB.</p>
+
+        <div class="field" id="fieldAmount">
+          <label for="paidAmount">Amount paid (₹)</label>
+          <input type="number" id="paidAmount" inputmode="numeric" min="1" max="100000" placeholder="e.g. 3000" />
+          <p class="error-msg">Enter the amount you paid.</p>
+        </div>
+        <div class="field" id="fieldTxnRef">
+          <label for="txnRef">UPI transaction / UTR number</label>
+          <input type="text" id="txnRef" placeholder="From your UPI app's payment confirmation" />
+          <p class="error-msg">Enter the transaction / UTR number from your payment app.</p>
+        </div>
 
         <div class="summary" id="summaryBox"></div>
 

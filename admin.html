@@ -64,7 +64,9 @@
           <button class="filter-tab active" data-filter="all">All</button>
           <button class="filter-tab" data-filter="pending">Pending</button>
           <button class="filter-tab" data-filter="confirmed">Confirmed</button>
+          <button class="filter-tab" data-filter="rejected">Rejected</button>
         </div>
+        <button class="btn btn-ghost" id="exportCsvBtn" type="button">Export CSV</button>
       </div>
 
       <div class="table-wrap">
@@ -75,12 +77,14 @@
               <th>Client</th>
               <th>Type</th>
               <th>Details</th>
+              <th>Amount</th>
+              <th>Txn Ref</th>
               <th>Proof</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody id="paymentsBody">
-            <tr><td colspan="6" class="loading-cell">Loading…</td></tr>
+            <tr><td colspan="8" class="loading-cell">Loading…</td></tr>
           </tbody>
         </table>
       </div>

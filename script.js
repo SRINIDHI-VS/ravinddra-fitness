@@ -133,6 +133,17 @@
   var checkNameEx = bindLiveValidation("clientNameEx", "fieldNameEx", validators.text);
   var checkPhoneEx = bindLiveValidation("clientPhoneEx", "fieldPhoneEx", validators.phone);
 
+  var checkAmount = bindLiveValidation("paidAmount", "fieldAmount", function (v) { return validators.range(v, 1, 100000); });
+  var checkTxnRef = bindLiveValidation("txnRef", "fieldTxnRef", function (v) { return (v || "").trim().length >= 4; });
+
+  function validateProofStep() {
+    var amountOk = checkAmount(true);
+    var txnOk = checkTxnRef(true);
+    var allOk = amountOk && txnOk;
+    if (!allOk) focusFirstInvalid(["fieldAmount", "fieldTxnRef"]);
+    return allOk;
+  }
+
   var selectedDiet = "";
   function validateDiet(showIfInvalid) {
     var ok = !!selectedDiet;
@@ -143,12 +154,25 @@
     return ok;
   }
 
+  function selectDiet(p) {
+    document.querySelectorAll("#dietPills .pill").forEach(function (o) {
+      o.classList.remove("selected");
+      o.setAttribute("aria-pressed", "false");
+    });
+    p.classList.add("selected");
+    p.setAttribute("aria-pressed", "true");
+    selectedDiet = p.dataset.val;
+    validateDiet(true);
+  }
+
   document.querySelectorAll("#dietPills .pill").forEach(function (p) {
-    p.addEventListener("click", function () {
-      document.querySelectorAll("#dietPills .pill").forEach(function (o) { o.classList.remove("selected"); });
-      p.classList.add("selected");
-      selectedDiet = p.dataset.val;
-      validateDiet(true);
+    p.setAttribute("aria-pressed", "false");
+    p.addEventListener("click", function () { selectDiet(p); });
+    p.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+        e.preventDefault();
+        selectDiet(p);
+      }
     });
   });
 
@@ -313,10 +337,17 @@
         ["Diet", document.getElementById("dietHidden").value]
       );
     }
+    var amount = document.getElementById("paidAmount").value;
+    var txnRef = document.getElementById("txnRef").value;
+    if (amount) rows.push(["Amount paid", "₹" + amount]);
+    if (txnRef) rows.push(["Transaction ref", txnRef]);
     summaryBox.innerHTML = rows.map(function (r) {
       return '<div class="summary-row"><span>' + r[0] + '</span><span>' + r[1] + "</span></div>";
     }).join("");
   }
+
+  document.getElementById("paidAmount").addEventListener("input", renderSummary);
+  document.getElementById("txnRef").addEventListener("input", renderSummary);
 
   /* ---------------- WhatsApp backup link ---------------- */
 
@@ -335,27 +366,65 @@
         "T&C agreed: Yes"
       );
     }
+    lines.push("Amount paid: ₹" + document.getElementById("paidAmount").value);
+    lines.push("Transaction ref: " + document.getElementById("txnRef").value);
     lines.push("Payment: Done (screenshot submitted via form)");
+    return "https://wa.me/919902269943?text=" + encodeURIComponent(lines.join("\n"));
+  }
+
+  function buildFallbackWaLink() {
+    var lines = [
+      "Hi Ravi, I'm having trouble submitting my " + (clientType === "New" ? "enrollment" : "payment") + " on the website. My details:",
+      "Name: " + document.getElementById("clientNameHidden").value,
+      "Phone: " + document.getElementById("clientPhoneHidden").value
+    ];
+    var amount = document.getElementById("paidAmount").value;
+    var txnRef = document.getElementById("txnRef").value;
+    if (amount) lines.push("Amount paid: ₹" + amount);
+    if (txnRef) lines.push("Transaction ref: " + txnRef);
+    lines.push("(Sending the payment screenshot here directly.)");
     return "https://wa.me/919902269943?text=" + encodeURIComponent(lines.join("\n"));
   }
 
   /* ---------------- Submit — straight to Supabase ---------------- */
 
-  function sanitizeFileName(name) {
-    return (name || "proof").replace(/[^a-zA-Z0-9.]+/g, "-");
-  }
-
-  function randomToken() {
-    return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
-  }
-
   function showSubmitError(msg) {
-    submitError.textContent = msg;
+    submitError.innerHTML = "";
+    submitError.appendChild(document.createTextNode(msg + " "));
+    var link = document.createElement("a");
+    link.href = buildFallbackWaLink();
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.className = "submit-error-wa";
+    link.textContent = "Message Ravi on WhatsApp →";
+    submitError.appendChild(link);
     submitError.classList.add("show");
   }
 
   function hideSubmitError() {
     submitError.classList.remove("show");
+  }
+
+  var ERROR_MESSAGES = {
+    not_yet_enrolled: "Looks like this is your first time with Ravi — please go back and choose \"New Client\" instead, so we can get your details and terms on file.",
+    rate_limited: "Too many submissions from this number in a short time. Please wait a few minutes and try again, or message Ravi directly on WhatsApp.",
+    invalid_name: "That name doesn't look right — please go back and re-check it.",
+    invalid_phone: "That phone number doesn't look right — please go back and re-check it.",
+    invalid_amount: "Please enter a valid amount paid.",
+    invalid_transaction_ref: "Please enter the transaction / UTR number from your payment app.",
+    invalid_age: "Age must be between 10 and 90 — please go back and re-check it.",
+    invalid_height: "Height must be between 100 and 230 cm — please go back and re-check it.",
+    invalid_weight: "Weight must be between 25 and 250 kg — please go back and re-check it.",
+    invalid_diet: "Please go back and choose Veg or Non-veg.",
+    terms_not_agreed: "Please go back and accept the terms & conditions first.",
+    invalid_file_type: "Please upload a JPG, PNG or WebP image.",
+    invalid_file_size: "That file is too large — please upload an image under 5 MB.",
+    upload_failed: "Couldn't upload your screenshot. Please try again with a smaller image.",
+    server_not_configured: "Something's wrong on our end — please message Ravi directly on WhatsApp instead."
+  };
+
+  function errorMessageFor(code) {
+    return ERROR_MESSAGES[code] || "Couldn't submit — check your internet connection and try again. If it keeps failing, message Ravi directly on WhatsApp.";
   }
 
   function submitEnrollment() {
@@ -365,35 +434,52 @@
 
     var file = proofFile.files[0];
     var phone = document.getElementById("clientPhoneHidden").value;
-    var filePath = phone + "/" + Date.now() + "-" + randomToken() + "-" + sanitizeFileName(file.name);
+    var age = document.getElementById("clientAgeHidden").value;
+    var height = document.getElementById("clientHeightHidden").value;
+    var weight = document.getElementById("clientWeightHidden").value;
+    var diet = document.getElementById("dietHidden").value;
+    var tcAgreedAt = document.getElementById("tcTimestamp").value;
+    var tcVersion = document.getElementById("tcVersionField").value;
+    var amount = document.getElementById("paidAmount").value;
+    var txnRef = document.getElementById("txnRef").value.trim();
 
-    supabaseClient.storage.from("payment-proofs").upload(filePath, file, {
-      contentType: file.type,
-      upsert: false
-    }).then(function (uploadResult) {
-      if (uploadResult.error) throw uploadResult.error;
+    // The file AND the enrollment details go to one server-side function
+    // (netlify/functions/submit-enrollment.mjs) instead of the browser talking to
+    // Supabase directly. That function uses the project's service-role key, which is
+    // never exposed to visitors, to (1) upload the screenshot, (2) write the record,
+    // and (3) delete the screenshot again if writing the record fails — so a failed
+    // submission never leaves an orphaned file behind. It also means the public site
+    // itself never needs any read/list access to the bucket: without this, any visitor
+    // with the (unavoidably public) anon key could list and download every client's
+    // payment screenshots and phone numbers straight out of the bucket.
+    var params = {
+      phone: phone,
+      filename: file.name,
+      name: document.getElementById("clientNameHidden").value,
+      client_type: clientType,
+      age: clientType === "New" ? age : "",
+      height_cm: clientType === "New" ? height : "",
+      weight_kg: clientType === "New" ? weight : "",
+      diet: clientType === "New" ? diet : "",
+      tc_agreed_at: clientType === "New" ? tcAgreedAt : "",
+      tc_version: clientType === "New" ? tcVersion : "",
+      amount: amount,
+      transaction_ref: txnRef
+    };
+    var qs = Object.keys(params).map(function (k) {
+      return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+    }).join("&");
 
-      var age = document.getElementById("clientAgeHidden").value;
-      var height = document.getElementById("clientHeightHidden").value;
-      var weight = document.getElementById("clientWeightHidden").value;
-      var diet = document.getElementById("dietHidden").value;
-      var tcAgreedAt = document.getElementById("tcTimestamp").value;
-      var tcVersion = document.getElementById("tcVersionField").value;
-
-      return supabaseClient.rpc("submit_enrollment", {
-        p_name: document.getElementById("clientNameHidden").value,
-        p_phone: phone,
-        p_client_type: clientType,
-        p_screenshot_path: filePath,
-        p_age: clientType === "New" && age !== "" ? Number(age) : null,
-        p_height_cm: clientType === "New" && height !== "" ? Number(height) : null,
-        p_weight_kg: clientType === "New" && weight !== "" ? Number(weight) : null,
-        p_diet: clientType === "New" ? diet : null,
-        p_tc_agreed_at: clientType === "New" && tcAgreedAt !== "" ? tcAgreedAt : null,
-        p_tc_version: clientType === "New" ? tcVersion : null
+    fetch("/.netlify/functions/submit-enrollment?" + qs, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        if (!res.ok) throw new Error((body && body.code) || "network_error");
+        return body;
       });
-    }).then(function (rpcResult) {
-      if (rpcResult.error) throw rpcResult.error;
+    }).then(function () {
       document.getElementById("waBtn").href = buildWaLink();
       path = { steps: ["done"], labels: [] };
       posInPath = 0;
@@ -402,7 +488,7 @@
       console.error(err);
       submitBtn.disabled = false;
       submitBtn.textContent = "Submit";
-      showSubmitError("Couldn't submit — check your internet connection and try again. If it keeps failing, message Ravi directly on WhatsApp.");
+      showSubmitError(errorMessageFor(err && err.message));
     });
   }
 
@@ -413,6 +499,7 @@
       uploadBox.classList.add("error");
       return;
     }
+    if (!validateProofStep()) return;
     submitEnrollment();
   });
 
