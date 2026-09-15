@@ -1,0 +1,135 @@
+<!doctype html>
+<title>Ravi Fitness — Admin</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="admin.css" />
+
+<div class="admin-shell">
+
+  <div class="login-wrap" id="loginScreen">
+    <form class="login-card" id="loginForm">
+      <p class="step-eyebrow">Ravi Fitness</p>
+      <h2 class="display admin-title">Admin Login</h2>
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required />
+      </div>
+      <p class="submit-error-msg" id="loginError">Wrong email or password.</p>
+      <button type="submit" class="btn btn-primary" id="loginBtn" style="width:100%;">Sign in</button>
+    </form>
+  </div>
+
+  <div class="dashboard" id="dashboard" hidden>
+    <header class="admin-header">
+      <div>
+        <p class="step-eyebrow">Ravi Fitness</p>
+        <h2 class="display admin-title">Client &amp; Payment Tracker</h2>
+      </div>
+      <button class="btn btn-ghost" id="signOutBtn">Sign out</button>
+    </header>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-num" id="statClients">–</span>
+        <span class="stat-label">Total clients</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="statMonth">–</span>
+        <span class="stat-label">Payments this month</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="statPending">–</span>
+        <span class="stat-label">Pending confirmation</span>
+      </div>
+    </div>
+
+    <div class="view-tabs">
+      <button class="view-tab active" data-view="payments">Payments</button>
+      <button class="view-tab" data-view="clients">Clients</button>
+      <button class="view-tab" data-view="renewals">Renewals</button>
+    </div>
+
+    <div id="paymentsView">
+      <div class="toolbar">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search name or phone…" />
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="all">All</button>
+          <button class="filter-tab" data-filter="pending">Pending</button>
+          <button class="filter-tab" data-filter="confirmed">Confirmed</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="payments-table">
+          <thead>
+            <tr>
+              <th>Submitted</th>
+              <th>Client</th>
+              <th>Type</th>
+              <th>Details</th>
+              <th>Proof</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="paymentsBody">
+            <tr><td colspan="6" class="loading-cell">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="clientsView" hidden>
+      <p class="renewals-note">Every client who has ever submitted, with everything they gave you — no need to dig through email or WhatsApp.</p>
+      <div class="table-wrap">
+        <table class="payments-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Age</th>
+              <th>Height</th>
+              <th>Weight</th>
+              <th>Diet</th>
+              <th>Payments</th>
+              <th>T&amp;C Agreed</th>
+            </tr>
+          </thead>
+          <tbody id="clientsBody">
+            <tr><td colspan="7" class="loading-cell">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="renewalsView" hidden>
+      <p class="renewals-note">Next due date is estimated as each client's last submitted payment + 4 weeks (the week-wise cycle from your terms). Overdue means that estimate has already passed.</p>
+      <div class="table-wrap">
+        <table class="payments-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Last Payment</th>
+              <th>Next Due (est.)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="renewalsBody">
+            <tr><td colspan="4" class="loading-cell">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="supabase-config.js"></script>
+<script src="admin.js"></script>
