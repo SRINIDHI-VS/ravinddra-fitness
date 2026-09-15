@@ -133,17 +133,6 @@
   var checkNameEx = bindLiveValidation("clientNameEx", "fieldNameEx", validators.text);
   var checkPhoneEx = bindLiveValidation("clientPhoneEx", "fieldPhoneEx", validators.phone);
 
-  var checkAmount = bindLiveValidation("paidAmount", "fieldAmount", function (v) { return validators.range(v, 1, 100000); });
-  var checkTxnRef = bindLiveValidation("txnRef", "fieldTxnRef", function (v) { return (v || "").trim().length >= 4; });
-
-  function validateProofStep() {
-    var amountOk = checkAmount(true);
-    var txnOk = checkTxnRef(true);
-    var allOk = amountOk && txnOk;
-    if (!allOk) focusFirstInvalid(["fieldAmount", "fieldTxnRef"]);
-    return allOk;
-  }
-
   var selectedDiet = "";
   function validateDiet(showIfInvalid) {
     var ok = !!selectedDiet;
@@ -337,17 +326,10 @@
         ["Diet", document.getElementById("dietHidden").value]
       );
     }
-    var amount = document.getElementById("paidAmount").value;
-    var txnRef = document.getElementById("txnRef").value;
-    if (amount) rows.push(["Amount paid", "₹" + amount]);
-    if (txnRef) rows.push(["Transaction ref", txnRef]);
     summaryBox.innerHTML = rows.map(function (r) {
       return '<div class="summary-row"><span>' + r[0] + '</span><span>' + r[1] + "</span></div>";
     }).join("");
   }
-
-  document.getElementById("paidAmount").addEventListener("input", renderSummary);
-  document.getElementById("txnRef").addEventListener("input", renderSummary);
 
   /* ---------------- WhatsApp backup link ---------------- */
 
@@ -366,8 +348,6 @@
         "T&C agreed: Yes"
       );
     }
-    lines.push("Amount paid: ₹" + document.getElementById("paidAmount").value);
-    lines.push("Transaction ref: " + document.getElementById("txnRef").value);
     lines.push("Payment: Done (screenshot submitted via form)");
     return "https://wa.me/919902269943?text=" + encodeURIComponent(lines.join("\n"));
   }
@@ -378,10 +358,6 @@
       "Name: " + document.getElementById("clientNameHidden").value,
       "Phone: " + document.getElementById("clientPhoneHidden").value
     ];
-    var amount = document.getElementById("paidAmount").value;
-    var txnRef = document.getElementById("txnRef").value;
-    if (amount) lines.push("Amount paid: ₹" + amount);
-    if (txnRef) lines.push("Transaction ref: " + txnRef);
     lines.push("(Sending the payment screenshot here directly.)");
     return "https://wa.me/919902269943?text=" + encodeURIComponent(lines.join("\n"));
   }
@@ -410,8 +386,6 @@
     rate_limited: "Too many submissions from this number in a short time. Please wait a few minutes and try again, or message Ravi directly on WhatsApp.",
     invalid_name: "That name doesn't look right — please go back and re-check it.",
     invalid_phone: "That phone number doesn't look right — please go back and re-check it.",
-    invalid_amount: "Please enter a valid amount paid.",
-    invalid_transaction_ref: "Please enter the transaction / UTR number from your payment app.",
     invalid_age: "Age must be between 10 and 90 — please go back and re-check it.",
     invalid_height: "Height must be between 100 and 230 cm — please go back and re-check it.",
     invalid_weight: "Weight must be between 25 and 250 kg — please go back and re-check it.",
@@ -440,8 +414,6 @@
     var diet = document.getElementById("dietHidden").value;
     var tcAgreedAt = document.getElementById("tcTimestamp").value;
     var tcVersion = document.getElementById("tcVersionField").value;
-    var amount = document.getElementById("paidAmount").value;
-    var txnRef = document.getElementById("txnRef").value.trim();
 
     // The file AND the enrollment details go to one server-side function
     // (netlify/functions/submit-enrollment.mjs) instead of the browser talking to
@@ -462,9 +434,7 @@
       weight_kg: clientType === "New" ? weight : "",
       diet: clientType === "New" ? diet : "",
       tc_agreed_at: clientType === "New" ? tcAgreedAt : "",
-      tc_version: clientType === "New" ? tcVersion : "",
-      amount: amount,
-      transaction_ref: txnRef
+      tc_version: clientType === "New" ? tcVersion : ""
     };
     var qs = Object.keys(params).map(function (k) {
       return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
@@ -499,7 +469,6 @@
       uploadBox.classList.add("error");
       return;
     }
-    if (!validateProofStep()) return;
     submitEnrollment();
   });
 

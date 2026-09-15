@@ -190,6 +190,7 @@
         <div class="qr-wrap">
           <img src="qr.jpg" alt="PhonePe QR code for Ravindra M B" />
         </div>
+        <a class="upi-pay-btn" id="upiPayBtn" href="upi://pay?pa=9902269943%40ybl&amp;pn=Ravindra%20M%20B&amp;cu=INR">📲 Pay via UPI app</a>
         <div class="upi-row">
           <div>
             9902269943@ybl
@@ -197,7 +198,7 @@
           </div>
           <button type="button" class="copy-btn" id="copyUpi">Copy</button>
         </div>
-        <p class="amount-note">Scan the QR or pay to the UPI ID above using any UPI app (PhonePe, GPay, Paytm). Confirm the amount with Ravi before paying if you haven't already.</p>
+        <p class="amount-note">On your phone, tap "Pay via UPI app" to open PhonePe/GPay/Paytm directly — or scan the QR, or copy the UPI ID above into any UPI app. Confirm the amount with Ravi before paying if you haven't already.</p>
 
         <div class="actions">
           <button type="button" class="btn btn-ghost" data-back>← Back</button>
@@ -220,17 +221,6 @@
         </label>
         <input type="file" id="proofFile" accept="image/png,image/jpeg,image/webp" />
         <p class="file-error-msg" id="fileError">Please upload a JPG, PNG or WebP under 5 MB.</p>
-
-        <div class="field" id="fieldAmount">
-          <label for="paidAmount">Amount paid (₹)</label>
-          <input type="number" id="paidAmount" inputmode="numeric" min="1" max="100000" placeholder="e.g. 3000" />
-          <p class="error-msg">Enter the amount you paid.</p>
-        </div>
-        <div class="field" id="fieldTxnRef">
-          <label for="txnRef">UPI transaction / UTR number</label>
-          <input type="text" id="txnRef" placeholder="From your UPI app's payment confirmation" />
-          <p class="error-msg">Enter the transaction / UTR number from your payment app.</p>
-        </div>
 
         <div class="summary" id="summaryBox"></div>
 

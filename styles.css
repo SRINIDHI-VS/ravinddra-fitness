@@ -252,6 +252,13 @@ body {
 
 .qr-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
 .qr-wrap img { width: 190px; height: auto; border-radius: 14px; border: 1px solid var(--border); }
+.upi-pay-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--accent); color: var(--accent-text);
+  font: inherit; font-weight: 800; font-size: 14.5px; padding: 14px; border-radius: 12px;
+  text-decoration: none; margin-bottom: 10px; transition: transform 0.12s, filter 0.12s;
+}
+.upi-pay-btn:active { transform: scale(0.97); }
 .upi-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px;
