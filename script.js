@@ -335,6 +335,10 @@
     return (name || "proof").replace(/[^a-zA-Z0-9.]+/g, "-");
   }
 
+  function randomToken() {
+    return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+  }
+
   function showSubmitError(msg) {
     submitError.textContent = msg;
     submitError.classList.add("show");
@@ -351,8 +355,7 @@
 
     var file = proofFile.files[0];
     var phone = document.getElementById("clientPhoneHidden").value;
-    var ext = (file.name && file.name.indexOf(".") !== -1) ? file.name.split(".").pop().toLowerCase() : "jpg";
-    var filePath = phone + "/" + Date.now() + "-" + sanitizeFileName(file.name) ;
+    var filePath = phone + "/" + Date.now() + "-" + randomToken() + "-" + sanitizeFileName(file.name);
 
     supabaseClient.storage.from("payment-proofs").upload(filePath, file, {
       contentType: file.type,
