@@ -3,6 +3,8 @@
 import { Fragment, useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
 import { isValidPhone } from "@/app/lib/validators";
+import { dedupeClients } from "@/app/lib/clients";
+import LogPaymentModal from "./LogPaymentModal";
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -10,27 +12,11 @@ function formatDate(iso) {
     " · " + d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
 
-function computeClients(rows) {
-  const byClient = {};
-  rows.forEach((r) => {
-    const c = r.clients;
-    if (!c) return;
-    if (!byClient[c.id]) {
-      byClient[c.id] = { id: c.id, name: c.name, phone: c.phone, age: c.age, height_cm: c.height_cm, weight_kg: c.weight_kg, diet: c.diet, paymentCount: 0, tcAgreedAt: null };
-    }
-    const entry = byClient[c.id];
-    entry.paymentCount++;
-    if (r.tc_agreed_at && (!entry.tcAgreedAt || new Date(r.tc_agreed_at) > new Date(entry.tcAgreedAt))) {
-      entry.tcAgreedAt = r.tc_agreed_at;
-    }
-  });
-  return Object.values(byClient).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-}
-
 export default function ClientsView({ rows, onReload }) {
   const [expandedId, setExpandedId] = useState(null);
   const [busyId, setBusyId] = useState(null);
-  const clients = computeClients(rows);
+  const [logClient, setLogClient] = useState(null);
+  const clients = dedupeClients(rows);
 
   async function editClient(client) {
     let newName = prompt("Client name:", client.name || "");
@@ -93,6 +79,7 @@ export default function ClientsView({ rows, onReload }) {
                     <td>
                       {c.tcAgreedAt ? formatDate(c.tcAgreedAt) : "—"}
                       <button className="row-btn edit-client-btn" type="button" disabled={busyId === c.id} onClick={(e) => { e.stopPropagation(); editClient(c); }}>Edit</button>
+                      <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); setLogClient(c); }}>Log renewal</button>
                     </td>
                   </tr>
                   {isOpen && (
@@ -119,6 +106,16 @@ export default function ClientsView({ rows, onReload }) {
           </tbody>
         </table>
       </div>
+
+      {logClient && (
+        <LogPaymentModal
+          clients={clients}
+          rows={rows}
+          initialClient={logClient}
+          onClose={() => setLogClient(null)}
+          onLogged={onReload}
+        />
+      )}
     </>
   );
 }

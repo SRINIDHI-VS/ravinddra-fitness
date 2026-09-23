@@ -13,6 +13,14 @@ export function whatsappLink(message) {
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
+// Ravi -> a client, instead of a client -> Ravi. India-only, like the rest
+// of this app (10-digit numbers, no country code stored) — hardcodes the 91
+// prefix wa.me needs.
+export function waLinkTo(phone, message) {
+  const base = `https://wa.me/91${phone}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
+}
+
 export function upiDeepLink() {
   return `upi://pay?pa=${encodeURIComponent(CONTACT.upiId)}&pn=${encodeURIComponent(CONTACT.upiPayee)}&cu=INR`;
 }

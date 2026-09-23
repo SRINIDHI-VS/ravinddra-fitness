@@ -1,6 +1,26 @@
-import { isValidPhone } from "@/app/lib/validators";
+// Looks a phone number up against the clients/payments tables so the enroll
+// form can decide New vs Existing itself, instead of asking the visitor to
+// pick — and, for an Existing client, also hands back their name and how
+// many payments they've completed, so the form can greet them by name
+// instead of asking them to retype it. Read-only, and — like every other
+// route here — uses the service-role key server-side so the public form
+// still never touches Supabase directly.
+//
+// "Existing" means: this phone belongs to a client who has at least one
+// payment on file where they agreed to the terms (tc_agreed_at is set). That
+// is the exact same definition submit_enrollment already uses to accept or
+// reject client_type=Existing at submit time, so this can never tell someone
+// they're "New" here and then get rejected as unenrolled at the end, or the
+// other way round.
+//
+// Trade-off worth knowing: anyone who knows or guesses a valid-format phone
+// number can now learn whether it belongs to one of Ravi's clients, and if
+// so, that client's name. There's no OTP or login here — see the New/Existing
+// lookup this route already did before. For a personal trainer's client
+// list this is a low-stakes trade for a much less annoying enrollment form.
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+import { isValidPhone } from "@/app/lib/validators";
+import { findClientByPhone } from "@/app/lib/server/clientRecord";
 
 function json(status, body) {
   return Response.json(body, { status });
@@ -18,47 +38,21 @@ export async function GET(req) {
     return json(400, { code: "invalid_phone" });
   }
 
-  const headers = {
-    apikey: serviceKey,
-    Authorization: "Bearer " + serviceKey,
-  };
-  
-  let clientRes;
+  let record;
   try {
-    clientRes = await fetch(
-      SUPABASE_URL + "/rest/v1/clients?phone=eq." + encodeURIComponent(phone) + "&select=id&limit=1",
-      { headers }
-    );
+    record = await findClientByPhone(phone, serviceKey);
   } catch (err) {
-    console.error("lookup-client (clients) request failed:", err);
-    return json(502, { code: "network_error" });
-  }
-  if (!clientRes.ok) {
-    console.error("lookup-client (clients) query rejected:", clientRes.status, await clientRes.text());
+    console.error("lookup-client query failed:", err);
     return json(502, { code: "lookup_failed" });
   }
-  const clients = await clientRes.json();
-  if (clients.length === 0) {
+
+  if (!record || record.agreedPayments.length === 0) {
     return json(200, { clientType: "New" });
   }
 
-  // Step 2: do they have a payment where they actually agreed to the terms?
-  const clientId = clients[0].id;
-  let paymentRes;
-  try {
-    paymentRes = await fetch(
-      SUPABASE_URL + "/rest/v1/payments?client_id=eq." + encodeURIComponent(clientId) +
-        "&tc_agreed_at=not.is.null&select=id&limit=1",
-      { headers }
-    );
-  } catch (err) {
-    console.error("lookup-client (payments) request failed:", err);
-    return json(502, { code: "network_error" });
-  }
-  if (!paymentRes.ok) {
-    console.error("lookup-client (payments) query rejected:", paymentRes.status, await paymentRes.text());
-    return json(502, { code: "lookup_failed" });
-  }
-  const payments = await paymentRes.json();
-  return json(200, { clientType: payments.length > 0 ? "Existing" : "New" });
+  return json(200, {
+    clientType: "Existing",
+    name: record.name,
+    paymentCount: record.agreedPayments.length,
+  });
 }

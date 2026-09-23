@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import Rail from "./Rail";
 import { CONTACT, upiDeepLink, whatsappLink } from "@/app/lib/siteConfig";
 import {
@@ -49,11 +51,18 @@ function errorMessageFor(code) {
   return ERROR_MESSAGES[code] || "Couldn't submit — check your internet connection and try again. If it keeps failing, message Ravi directly on WhatsApp.";
 }
 
+// Step crossfade — direction-aware so "back" visibly reverses "forward".
+const STEP_VARIANTS = {
+  initial: (dir) => ({ opacity: 0, x: dir >= 0 ? 24 : -24 }),
+  animate: { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.2, 0.8, 0.2, 1] } },
+  exit: (dir) => ({ opacity: 0, x: dir >= 0 ? -16 : 16, transition: { duration: 0.2, ease: "easeIn" } }),
+};
+
 export default function EnrollForm() {
   const [clientType, setClientType] = useState(null);
   const [posInPath, setPosInPath] = useState(0);
+  const [direction, setDirection] = useState(1);
   const [done, setDone] = useState(false);
-  const [animKey, setAnimKey] = useState(0);
 
   // Details (New) / Identify (Existing) — kept separate so switching client
   // type never mixes up a half-filled draft from the other path.
@@ -65,13 +74,29 @@ export default function EnrollForm() {
   const [diet, setDiet] = useState("");
   const [nameEx, setNameEx] = useState("");
   const [phoneEx, setPhoneEx] = useState("");
+  const [existingName, setExistingName] = useState("");
+  const [existingPaymentCount, setExistingPaymentCount] = useState(0);
+  // Two people can share one phone (a spouse, a parent). If whoever's typing
+  // gives a name that doesn't match what's on file, submitting as-is would
+  // silently rename the existing person's record — this stops that instead
+  // of assuming it's just a typo.
+  const [showNameConflict, setShowNameConflict] = useState(false);
   const [touched, setTouched] = useState({});
 
   // Terms
   const [agreed, setAgreed] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [tcAgreedAt, setTcAgreedAt] = useState("");
-  const tcBoxRef = useRef(null);
+  // A callback-ref-backed state, not useRef: AnimatePresence (mode="wait")
+  // mounts the "terms" step's DOM only after the previous step's exit
+  // animation finishes, well after the stepKey state change that used to
+  // drive this effect. A useRef + `[stepKey]` dependency raced that delay —
+  // the effect fired first, saw a still-null ref, and nothing re-triggered
+  // it once the box actually mounted, so the scroll listener never
+  // attached. Keying the effect on the DOM node itself (via setState in the
+  // ref callback) makes it fire exactly when the node really exists.
+  const [tcBox, setTcBox] = useState(null);
 
   // Proof + submit
   const [file, setFile] = useState(null);
@@ -93,16 +118,17 @@ export default function EnrollForm() {
   }
 
   function goTo(i) {
+    setDirection(i > posInPath ? 1 : -1);
     setPosInPath(i);
-    setAnimKey((k) => k + 1);
   }
 
   function back() {
+    setDirection(-1);
     if (posInPath === 0) {
       setClientType(null);
       setPhoneCheckErrorCode(null);
     } else {
-      goTo(posInPath - 1);
+      setPosInPath(posInPath - 1);
     }
   }
 
@@ -117,10 +143,15 @@ export default function EnrollForm() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.code || "network_error");
       const type = body.clientType === "Existing" ? "Existing" : "New";
-      if (type === "Existing") setPhoneEx(cleanPhone);
+      if (type === "Existing") {
+        setPhoneEx(cleanPhone);
+        setExistingName(body.name || "");
+        setNameEx(body.name || "");
+        setExistingPaymentCount(body.paymentCount || 0);
+      }
+      setDirection(1);
       setClientType(type);
       setPosInPath(0);
-      setAnimKey((k) => k + 1);
     } catch (err) {
       setPhoneCheckErrorCode(err?.message || "network_error");
     } finally {
@@ -128,22 +159,23 @@ export default function EnrollForm() {
     }
   }
 
-  // Terms scroll-to-unlock. Only mounted while the "terms" step is actually
-  // rendered, so — unlike the old vanilla build — there's no hidden, 0-height
-  // version of this box for a load-time check to misread as "already at the
-  // bottom." The check runs once right after this box actually has real
-  // layout, and again on every real scroll.
+  // Terms scroll-to-unlock. Depends on `tcBox` (the actual DOM node, set by
+  // the ref callback on the "terms" step's box), not on `stepKey` — so this
+  // runs exactly when the box really exists, however AnimatePresence times
+  // its mount, and cleans up exactly when it's removed. The check runs once
+  // right after the box has real layout, and again on every real scroll,
+  // and also drives the visible progress bar.
   useEffect(() => {
-    if (stepKey !== "terms") return;
-    const box = tcBoxRef.current;
-    if (!box) return;
+    if (!tcBox) return;
     const check = () => {
-      if (box.scrollTop + box.clientHeight >= box.scrollHeight - 8) setUnlocked(true);
+      const max = tcBox.scrollHeight - tcBox.clientHeight;
+      setScrollProgress(max <= 0 ? 100 : Math.min(100, Math.round((tcBox.scrollTop / max) * 100)));
+      if (tcBox.scrollTop + tcBox.clientHeight >= tcBox.scrollHeight - 8) setUnlocked(true);
     };
     check();
-    box.addEventListener("scroll", check);
-    return () => box.removeEventListener("scroll", check);
-  }, [stepKey]);
+    tcBox.addEventListener("scroll", check);
+    return () => tcBox.removeEventListener("scroll", check);
+  }, [tcBox]);
 
   useEffect(() => {
     if (!previewUrl) return;
@@ -174,7 +206,14 @@ export default function EnrollForm() {
 
   function next() {
     if (stepKey === "details" && !validateDetails(true)) return;
-    if (stepKey === "identify" && !validateIdentify(true)) return;
+    if (stepKey === "identify") {
+      if (!validateIdentify(true)) return;
+      const nameChanged = existingName && nameEx.trim().toLowerCase() !== existingName.trim().toLowerCase();
+      if (nameChanged) {
+        setShowNameConflict(true);
+        return;
+      }
+    }
     goTo(posInPath + 1);
   }
 
@@ -282,7 +321,15 @@ export default function EnrollForm() {
       {path && stepKey !== "done" && <Rail labels={path.labels} posInPath={posInPath} />}
 
       <div className="card">
-        <div key={animKey} className={stepKey === "phone" || stepKey === "done" ? "step active" : "step active slide-in"}>
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={stepKey}
+            custom={direction}
+            variants={STEP_VARIANTS}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
           {stepKey === "phone" && (
             <>
               <p className="step-eyebrow">Welcome</p>
@@ -311,7 +358,7 @@ export default function EnrollForm() {
               )}
               <div className="actions">
                 <button type="button" className="btn btn-primary" disabled={checkingPhone} onClick={checkPhoneAndContinue}>
-                  {checkingPhone ? "Checking…" : "Continue →"}
+                  {checkingPhone && <Spinner />}{checkingPhone ? "Checking…" : "Continue →"}
                 </button>
               </div>
             </>
@@ -332,23 +379,44 @@ export default function EnrollForm() {
                 <p className="error-msg">Enter a valid 10-digit Indian mobile number.</p>
               </div>
               <div className="row2">
-                <div className={"field" + (touched.age && !isInRange(age, "age") ? " error" : "")}>
-                  <label htmlFor="clientAge">Age</label>
-                  <input id="clientAge" type="number" inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} onBlur={() => touch("age")} />
-                  <p className="error-msg">Age must be between 10 and 90.</p>
-                </div>
-                <div className={"field" + (touched.height && !isInRange(height, "height_cm") ? " error" : "")}>
-                  <label htmlFor="clientHeight">Height (cm)</label>
-                  <input id="clientHeight" type="number" inputMode="numeric" value={height} onChange={(e) => setHeight(e.target.value)} onBlur={() => touch("height")} />
-                  <p className="error-msg">Height must be between 100 and 230 cm.</p>
-                </div>
+                <NumberField
+                  id="clientAge"
+                  label="Age"
+                  value={age}
+                  onChange={setAge}
+                  onBlur={() => touch("age")}
+                  min={10}
+                  max={90}
+                  error={touched.age && !isInRange(age, "age")}
+                  errorMsg="Age must be between 10 and 90."
+                />
+                <NumberField
+                  id="clientHeight"
+                  label="Height (cm)"
+                  value={height}
+                  onChange={setHeight}
+                  onBlur={() => touch("height")}
+                  min={100}
+                  max={230}
+                  unit="cm"
+                  error={touched.height && !isInRange(height, "height_cm")}
+                  errorMsg="Height must be between 100 and 230 cm."
+                />
               </div>
               <div className="row2">
-                <div className={"field" + (touched.weight && !isInRange(weight, "weight_kg") ? " error" : "")}>
-                  <label htmlFor="clientWeight">Weight (kg)</label>
-                  <input id="clientWeight" type="number" inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} onBlur={() => touch("weight")} />
-                  <p className="error-msg">Weight must be between 25 and 250 kg.</p>
-                </div>
+                <NumberField
+                  id="clientWeight"
+                  label="Weight (kg)"
+                  value={weight}
+                  onChange={setWeight}
+                  onBlur={() => touch("weight")}
+                  min={25}
+                  max={250}
+                  step={0.5}
+                  unit="kg"
+                  error={touched.weight && !isInRange(weight, "weight_kg")}
+                  errorMsg="Weight must be between 25 and 250 kg."
+                />
                 <div className={"field" + (touched.diet && !isValidDiet(diet) ? " error" : "")}>
                   <label>Diet</label>
                   <div className={"pillgroup" + (touched.diet && !isValidDiet(diet) ? " error" : "")} role="group" aria-label="Diet">
@@ -373,20 +441,60 @@ export default function EnrollForm() {
           {stepKey === "identify" && (
             <>
               <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
-              <h2 className="step-title display">Welcome Back</h2>
+              <motion.h2
+                className="step-title display welcome-name"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                Welcome back{existingName ? ", " + existingName.split(" ")[0] : ""}!
+              </motion.h2>
+              {existingPaymentCount > 0 && (
+                <p className="streak-note">This will be payment #{existingPaymentCount + 1} with Ravi 💪</p>
+              )}
               <div className="field">
                 <label htmlFor="clientPhoneExDisplay">Phone number</label>
                 <input id="clientPhoneExDisplay" type="tel" value={phoneEx} disabled readOnly />
               </div>
               <div className={"field" + (touched.nameEx && !isValidName(nameEx) ? " error" : "")}>
                 <label htmlFor="clientNameEx">Full name</label>
-                <input id="clientNameEx" type="text" autoComplete="name" value={nameEx} onChange={(e) => setNameEx(e.target.value)} onBlur={() => touch("nameEx")} />
+                <input
+                  id="clientNameEx"
+                  type="text"
+                  autoComplete="name"
+                  value={nameEx}
+                  onChange={(e) => { setNameEx(e.target.value); setShowNameConflict(false); }}
+                  onBlur={() => touch("nameEx")}
+                />
                 <p className="error-msg">Enter your full name (at least 2 letters).</p>
               </div>
-              <div className="actions">
-                <button type="button" className="btn btn-ghost" onClick={back}>← Not you? Go back</button>
-                <button type="button" className="btn btn-primary" onClick={next}>Continue to Payment →</button>
-              </div>
+
+              {showNameConflict ? (
+                <>
+                  <div className="warn-box">
+                    This number is on file as <strong>{existingName}</strong>, not &quot;{nameEx.trim()}&quot;. Are you the same person fixing a typo, or does someone else use this phone too?
+                  </div>
+                  <div className="actions" style={{ flexDirection: "column" }}>
+                    <button type="button" className="btn btn-primary" onClick={() => { setShowNameConflict(false); goTo(posInPath + 1); }}>
+                      That&apos;s me — just fixing a typo →
+                    </button>
+                    <a
+                      className="wa-btn"
+                      href={whatsappLink(`Hi Ravi, this number shows as ${existingName}'s on your system but I'm a different person (${nameEx.trim()}). Can you help set up my own record?`)}
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      📲 Different person — message Ravi
+                    </a>
+                    <button type="button" className="btn btn-ghost" onClick={() => setShowNameConflict(false)}>← Back to editing</button>
+                  </div>
+                </>
+              ) : (
+                <div className="actions">
+                  <button type="button" className="btn btn-ghost" onClick={back}>← Not you? Go back</button>
+                  <button type="button" className="btn btn-primary" onClick={next}>Continue to Payment →</button>
+                </div>
+              )}
             </>
           )}
 
@@ -402,7 +510,7 @@ export default function EnrollForm() {
                 <span className="cycle-arrow">→</span>
                 <div className="cycle-block pay">PAY</div>
               </div>
-              <div className="tc-box" ref={tcBoxRef}>
+              <div className="tc-box" ref={setTcBox}>
                 <h4>Program structure</h4>
                 <p>Training runs in 4-week blocks, counted strictly week-wise — not by calendar month or fixed start/end dates.</p>
                 <h4>Class days</h4>
@@ -421,6 +529,9 @@ export default function EnrollForm() {
                 </ul>
                 <h4>Payment confirmation</h4>
                 <p>After paying, you must share a screenshot of the payment as confirmation — the next steps in this form.</p>
+              </div>
+              <div className="scroll-progress-track" aria-hidden="true">
+                <motion.div className="scroll-progress-fill" animate={{ width: scrollProgress + "%" }} transition={{ duration: 0.15 }} />
               </div>
               {!unlocked && <p className="scroll-hint">↓ Scroll to the end to unlock the checkbox</p>}
               <div className={"agree-row" + (unlocked ? " unlocked" : "")}>
@@ -497,25 +608,104 @@ export default function EnrollForm() {
 
               <div className="actions">
                 <button type="button" className="btn btn-ghost" onClick={back}>← Back</button>
-                <button type="submit" className="btn btn-primary" disabled={!file || submitting}>{submitting ? "Submitting…" : "Submit"}</button>
+                <button type="submit" className="btn btn-primary" disabled={!file || submitting}>{submitting && <Spinner />}{submitting ? "Submitting…" : "Submit"}</button>
               </div>
             </form>
           )}
 
           {stepKey === "done" && (
             <div className="done-wrap">
-              <div className="done-badge">✓</div>
+              <div className="done-badge-wrap">
+                <div className="done-badge">
+                  <motion.svg width="34" height="34" viewBox="0 0 62 62" fill="none">
+                    <motion.circle
+                      cx="31" cy="31" r="29" stroke="var(--success)" strokeWidth="2.5"
+                      initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
+                    <motion.path
+                      d="M19 32l8 8 16-18" stroke="var(--success)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
+                      initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, delay: 0.4, ease: "easeOut" }}
+                    />
+                  </motion.svg>
+                </div>
+                <Burst />
+              </div>
               <h2 className="display">You&apos;re all set</h2>
               <p>Ravi has received your submission — details, payment confirmation and screenshot. He&apos;ll confirm shortly.</p>
               <a className="wa-btn" href={buildWaLink()} target="_blank" rel="noopener">📲 Also send a note on WhatsApp</a>
             </div>
           )}
-        </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <footer className="foot">
         Ravi · Personal Training · <a href={CONTACT.instagramUrl} target="_blank" rel="noopener">{CONTACT.instagramHandle}</a>
+        <br />
+        <Link href="/status">Already enrolled? Check your status →</Link>
       </footer>
+    </div>
+  );
+}
+
+function Spinner() {
+  return <span className="spinner" aria-hidden="true" />;
+}
+
+// Ten small gold particles radiating out from the done-badge and fading —
+// a restrained stand-in for confetti that fits a dark/gold premium palette
+// instead of a colorful party-popper look.
+function Burst() {
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 10 }, (_, i) => {
+        const angle = (i / 10) * Math.PI * 2;
+        return { x: Math.cos(angle) * 46, y: Math.sin(angle) * 46, delay: i * 0.02 };
+      }),
+    []
+  );
+  return (
+    <div className="done-burst" aria-hidden="true">
+      {particles.map((p, i) => (
+        <motion.span
+          key={i}
+          className="done-particle"
+          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+          animate={{ x: p.x, y: p.y, opacity: 0, scale: 0.3 }}
+          transition={{ duration: 0.7, delay: 0.35 + p.delay, ease: "easeOut" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function NumberField({ id, label, value, onChange, onBlur, min, max, step = 1, unit, error, errorMsg }) {
+  function clamp(n) {
+    if (Number.isNaN(n)) return String(min);
+    return String(Math.min(max, Math.max(min, n)));
+  }
+  function bump(delta) {
+    const current = Number(value);
+    onChange(clamp((Number.isFinite(current) ? current : min) + delta));
+  }
+  return (
+    <div className={"field" + (error ? " error" : "")}>
+      <label htmlFor={id}>{label}</label>
+      <div className="stepper">
+        <button type="button" className="stepper-btn" onClick={() => bump(-step)} aria-label={"Decrease " + label}>−</button>
+        <input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          className="stepper-input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+        />
+        {unit && <span className="stepper-unit">{unit}</span>}
+        <button type="button" className="stepper-btn" onClick={() => bump(step)} aria-label={"Increase " + label}>+</button>
+      </div>
+      <p className="error-msg">{errorMsg}</p>
     </div>
   );
 }

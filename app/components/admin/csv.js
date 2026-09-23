@@ -9,12 +9,12 @@ function csvField(v) {
 }
 
 export function exportPaymentsCsv(rows) {
-  const header = ["Submitted", "Client", "Phone", "Type", "Amount", "Transaction Ref", "Status", "Confirmed At", "Rejection Reason"];
+  const header = ["Submitted", "Client", "Phone", "Type", "Amount", "Transaction Ref", "Status", "Confirmed At", "Rejection Reason", "Logged By"];
   const lines = [header.map(csvField).join(",")];
   rows.forEach((r) => {
     const c = r.clients || {};
     lines.push(
-      [r.submitted_at, c.name, c.phone, r.client_type, r.amount, r.transaction_ref, r.status, r.confirmed_at, r.rejection_reason]
+      [r.submitted_at, c.name, c.phone, r.client_type, r.amount, r.transaction_ref, r.status, r.confirmed_at, r.rejection_reason, r.source === "admin_manual" ? "Ravi (manual)" : "Client"]
         .map(csvField)
         .join(",")
     );

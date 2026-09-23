@@ -38,7 +38,7 @@ export default function AdminDashboard() {
     setLoadingRows(true);
     supabase
       .from("payments")
-      .select("id, client_type, status, screenshot_path, submitted_at, confirmed_at, tc_agreed_at, amount, transaction_ref, rejection_reason, clients(id, name, phone, age, height_cm, weight_kg, diet)")
+      .select("id, client_type, status, screenshot_path, submitted_at, confirmed_at, tc_agreed_at, amount, transaction_ref, rejection_reason, source, clients(id, name, phone, age, height_cm, weight_kg, diet)")
       .order("submitted_at", { ascending: false })
       .then(({ data, error }) => {
         setLoadingRows(false);

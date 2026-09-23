@@ -1,0 +1,46 @@
+// Server-only: looks a phone number up against clients/payments using the
+// Supabase service-role key. Shared by /api/lookup-client (New vs Existing,
+// plus the welcome-back personalization) and /api/client-status (the
+// self-serve status page), so both agree on what counts as a client and what
+// counts as a completed enrollment — the same definition submit_enrollment
+// itself uses (a payment with tc_agreed_at set).
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+export async function findClientByPhone(phone, serviceKey) {
+  const headers = {
+    apikey: serviceKey,
+    Authorization: "Bearer " + serviceKey,
+  };
+
+  const clientRes = await fetch(
+    SUPABASE_URL + "/rest/v1/clients?phone=eq." + encodeURIComponent(phone) + "&select=id,name&limit=1",
+    { headers }
+  );
+  if (!clientRes.ok) {
+    throw new Error("clients_query_failed");
+  }
+  const clients = await clientRes.json();
+  if (clients.length === 0) {
+    return null;
+  }
+
+  const client = clients[0];
+  const paymentsRes = await fetch(
+    SUPABASE_URL + "/rest/v1/payments?client_id=eq." + encodeURIComponent(client.id) +
+      "&select=id,status,tc_agreed_at,submitted_at,confirmed_at&order=submitted_at.asc",
+    { headers }
+  );
+  if (!paymentsRes.ok) {
+    throw new Error("payments_query_failed");
+  }
+  const payments = await paymentsRes.json();
+  const agreedPayments = payments.filter((p) => p.tc_agreed_at);
+
+  return {
+    id: client.id,
+    name: client.name,
+    payments,
+    agreedPayments,
+  };
+}
