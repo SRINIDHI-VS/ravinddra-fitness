@@ -106,18 +106,11 @@ a { color: inherit; text-decoration: none; }
 .step-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin: 0 0 6px; }
 .step-title { font-size: 26px; margin: 0 0 18px; }
 
-.choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.choice-card { background: var(--surface-raised); border: 1.5px solid var(--border); border-radius: 16px; padding: 20px 14px; text-align: center; cursor: pointer; font: inherit; color: var(--text); transition: border-color 0.15s, transform 0.12s; }
-.choice-card:hover { border-color: var(--gold); }
-.choice-card:active { transform: scale(0.97); }
-.choice-icon { font-size: 26px; margin-bottom: 10px; }
-.choice-title { font-family: "Big Shoulders Display", sans-serif; font-weight: 800; font-size: 17px; margin-bottom: 6px; }
-.choice-sub { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
-
 .field { margin-bottom: 16px; }
 .field label { display: block; font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; color: var(--text-muted); margin-bottom: 6px; }
 .field input, .field select { width: 100%; background: var(--surface-raised); border: 1px solid var(--border); color: var(--text); font: inherit; font-weight: 600; padding: 12px 13px; border-radius: 11px; transition: border-color 0.15s; }
 .field input:focus, .field select:focus { border-color: var(--gold); }
+.field input:disabled { opacity: 0.7; cursor: default; }
 .field .error-msg { display: none; font-size: 11.5px; font-weight: 700; color: var(--danger); margin-top: 6px; }
 .field.error input { border-color: var(--danger); }
 .field.error .error-msg { display: block; }

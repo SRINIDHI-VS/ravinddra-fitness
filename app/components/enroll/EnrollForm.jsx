@@ -36,6 +36,15 @@ const ERROR_MESSAGES = {
   server_not_configured: "Something's wrong on our end — please message Ravi directly on WhatsApp instead.",
 };
 
+const PHONE_CHECK_ERROR_MESSAGES = {
+  invalid_phone: "That phone number doesn't look right — please re-check it.",
+  server_not_configured: "Something's wrong on our end — please message Ravi directly on WhatsApp instead.",
+};
+
+function phoneCheckErrorMessageFor(code) {
+  return PHONE_CHECK_ERROR_MESSAGES[code] || "Couldn't check your number — check your internet connection and try again.";
+}
+
 function errorMessageFor(code) {
   return ERROR_MESSAGES[code] || "Couldn't submit — check your internet connection and try again. If it keeps failing, message Ravi directly on WhatsApp.";
 }
@@ -71,8 +80,13 @@ export default function EnrollForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitErrorCode, setSubmitErrorCode] = useState(null);
 
+  // Phone-first lookup — this is what decides New vs Existing now, instead
+  // of asking the visitor to pick.
+  const [checkingPhone, setCheckingPhone] = useState(false);
+  const [phoneCheckErrorCode, setPhoneCheckErrorCode] = useState(null);
+
   const path = clientType ? PATHS[clientType] : null;
-  const stepKey = done ? "done" : !clientType ? "choice" : path.steps[posInPath];
+  const stepKey = done ? "done" : !clientType ? "phone" : path.steps[posInPath];
 
   function touch(field) {
     setTouched((t) => ({ ...t, [field]: true }));
@@ -83,17 +97,34 @@ export default function EnrollForm() {
     setAnimKey((k) => k + 1);
   }
 
-  function chooseType(type) {
-    setClientType(type);
-    setPosInPath(0);
-    setAnimKey((k) => k + 1);
-  }
-
   function back() {
     if (posInPath === 0) {
       setClientType(null);
+      setPhoneCheckErrorCode(null);
     } else {
       goTo(posInPath - 1);
+    }
+  }
+
+  async function checkPhoneAndContinue() {
+    touch("phone");
+    if (!isValidPhone(phone)) return;
+    setCheckingPhone(true);
+    setPhoneCheckErrorCode(null);
+    const cleanPhone = phone.trim();
+    try {
+      const res = await fetch("/api/lookup-client?phone=" + encodeURIComponent(cleanPhone));
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.code || "network_error");
+      const type = body.clientType === "Existing" ? "Existing" : "New";
+      if (type === "Existing") setPhoneEx(cleanPhone);
+      setClientType(type);
+      setPosInPath(0);
+      setAnimKey((k) => k + 1);
+    } catch (err) {
+      setPhoneCheckErrorCode(err?.message || "network_error");
+    } finally {
+      setCheckingPhone(false);
     }
   }
 
@@ -251,21 +282,36 @@ export default function EnrollForm() {
       {path && stepKey !== "done" && <Rail labels={path.labels} posInPath={posInPath} />}
 
       <div className="card">
-        <div key={animKey} className={stepKey === "choice" || stepKey === "done" ? "step active" : "step active slide-in"}>
-          {stepKey === "choice" && (
+        <div key={animKey} className={stepKey === "phone" || stepKey === "done" ? "step active" : "step active slide-in"}>
+          {stepKey === "phone" && (
             <>
               <p className="step-eyebrow">Welcome</p>
-              <h2 className="step-title display">New or existing client?</h2>
-              <div className="choice-grid">
-                <button type="button" className="choice-card" onClick={() => chooseType("New")}>
-                  <div className="choice-icon">🆕</div>
-                  <div className="choice-title">New Client</div>
-                  <div className="choice-sub">First time enrolling — details, terms &amp; payment</div>
-                </button>
-                <button type="button" className="choice-card" onClick={() => chooseType("Existing")}>
-                  <div className="choice-icon">🔁</div>
-                  <div className="choice-title">Existing Client</div>
-                  <div className="choice-sub">Already enrolled — just this cycle&apos;s payment</div>
+              <h2 className="step-title display">Let&apos;s get started</h2>
+              <p className="amount-note">Enter your phone number — we&apos;ll take it from there.</p>
+              <div className={"field" + (touched.phone && !isValidPhone(phone) ? " error" : "")}>
+                <label htmlFor="clientPhone0">Phone number</label>
+                <input
+                  id="clientPhone0"
+                  type="tel"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  placeholder="10-digit mobile number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onBlur={() => touch("phone")}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); checkPhoneAndContinue(); } }}
+                />
+                <p className="error-msg">Enter a valid 10-digit Indian mobile number.</p>
+              </div>
+              {phoneCheckErrorCode && (
+                <p className="submit-error-msg show">
+                  {phoneCheckErrorMessageFor(phoneCheckErrorCode)}{" "}
+                  <a className="submit-error-wa" href={whatsappLink("Hi Ravi, I'm having trouble starting my enrollment on the website.")} target="_blank" rel="noopener">Message Ravi on WhatsApp →</a>
+                </p>
+              )}
+              <div className="actions">
+                <button type="button" className="btn btn-primary" disabled={checkingPhone} onClick={checkPhoneAndContinue}>
+                  {checkingPhone ? "Checking…" : "Continue →"}
                 </button>
               </div>
             </>
@@ -327,19 +373,18 @@ export default function EnrollForm() {
           {stepKey === "identify" && (
             <>
               <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
-              <h2 className="step-title display">Confirm It&apos;s You</h2>
+              <h2 className="step-title display">Welcome Back</h2>
+              <div className="field">
+                <label htmlFor="clientPhoneExDisplay">Phone number</label>
+                <input id="clientPhoneExDisplay" type="tel" value={phoneEx} disabled readOnly />
+              </div>
               <div className={"field" + (touched.nameEx && !isValidName(nameEx) ? " error" : "")}>
                 <label htmlFor="clientNameEx">Full name</label>
                 <input id="clientNameEx" type="text" autoComplete="name" value={nameEx} onChange={(e) => setNameEx(e.target.value)} onBlur={() => touch("nameEx")} />
                 <p className="error-msg">Enter your full name (at least 2 letters).</p>
               </div>
-              <div className={"field" + (touched.phoneEx && !isValidPhone(phoneEx) ? " error" : "")}>
-                <label htmlFor="clientPhoneEx">Phone number</label>
-                <input id="clientPhoneEx" type="tel" autoComplete="tel" inputMode="tel" placeholder="The number Ravi has on file" value={phoneEx} onChange={(e) => setPhoneEx(e.target.value)} onBlur={() => touch("phoneEx")} />
-                <p className="error-msg">Enter a valid 10-digit Indian mobile number.</p>
-              </div>
               <div className="actions">
-                <button type="button" className="btn btn-ghost" onClick={back}>← Back</button>
+                <button type="button" className="btn btn-ghost" onClick={back}>← Not you? Go back</button>
                 <button type="button" className="btn btn-primary" onClick={next}>Continue to Payment →</button>
               </div>
             </>
