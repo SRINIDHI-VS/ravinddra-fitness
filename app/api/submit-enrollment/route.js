@@ -1,19 +1,30 @@
-// Handles the whole public submission: uploads the payment-proof screenshot
-// and writes the enrollment record, both using the Supabase service-role key
-// (set as the SUPABASE_SERVICE_ROLE_KEY environment variable in Netlify's
-// site settings — never put that key in any file the browser can see).
+// Handles the whole public submission: uploads the payment-proof screenshot and
+// writes the enrollment record, both using the Supabase service-role key (set as
+// SUPABASE_SERVICE_ROLE_KEY in Vercel's project environment variables — never in
+// this file, never in NEXT_PUBLIC_* — no name that ships to the browser).
 //
-// Doing this server-side, in one place, is what lets the public website have
-// ZERO direct access to the storage bucket: with no anon policy on
-// storage.objects, nobody can list or download other clients' screenshots
-// using the (unavoidably public) anon key, which is exactly the hole this
-// replaces. It also means a submission that uploads fine but then fails the
-// database write doesn't leave an orphaned file behind — this function
-// deletes it again before reporting the error back to the visitor.
+// Doing this server-side, in one place, is what lets the public site have ZERO
+// direct access to the storage bucket: with no anon policy on storage.objects,
+// nobody can list or download other clients' screenshots using the (unavoidably
+// public) anon key. It also means a submission that uploads fine but then fails
+// the database write doesn't leave an orphaned file behind — this route deletes
+// it again before reporting the error back to the visitor.
+//
+// Every field here is re-validated with the exact same rules as the browser form
+// (app/lib/validators.js, shared by both) — this endpoint is a public URL, so
+// anyone can POST to it directly and skip the browser entirely.
 
-const SUPABASE_URL = "https://yjgmknysqqnallpacbyh.supabase.co";
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
+import {
+  isValidName,
+  isValidPhone,
+  isInRange,
+  isValidDiet,
+  isValidClientType,
+  MAX_FILE_BYTES,
+  ALLOWED_FILE_TYPES,
+} from "@/app/lib/validators";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 function sanitizeFileName(name) {
   return (name || "proof").replace(/[^a-zA-Z0-9.]+/g, "-");
@@ -24,15 +35,12 @@ function randomToken() {
 }
 
 function json(status, body) {
-  return new Response(JSON.stringify(body), {
-    status: status,
-    headers: { "Content-Type": "application/json" }
-  });
+  return Response.json(body, { status });
 }
 
 function numOrNull(v) {
   if (v === null || v === undefined || v === "") return null;
-  var n = Number(v);
+  const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -40,14 +48,10 @@ function strOrNull(v) {
   return v === null || v === undefined || v === "" ? null : v;
 }
 
-export default async (req) => {
-  if (req.method !== "POST") {
-    return json(405, { error: "Method not allowed" });
-  }
-
+export async function POST(req) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
-    console.error("SUPABASE_SERVICE_ROLE_KEY is not set in this site's environment variables.");
+    console.error("SUPABASE_SERVICE_ROLE_KEY is not set in this project's environment variables.");
     return json(500, { code: "server_not_configured" });
   }
 
@@ -57,20 +61,36 @@ export default async (req) => {
   const fileName = params.get("filename") || "proof";
   const contentType = req.headers.get("content-type") || "";
 
-  if (!/^[6-9]\d{9}$/.test(phone)) {
+  if (!isValidPhone(phone)) {
     return json(400, { code: "invalid_phone" });
   }
-  if (ALLOWED_TYPES.indexOf(contentType) === -1) {
+  if (!ALLOWED_FILE_TYPES.includes(contentType)) {
     return json(400, { code: "invalid_file_type" });
+  }
+
+  const clientType = params.get("client_type") || "";
+  if (!isValidClientType(clientType)) {
+    return json(400, { code: "invalid_client_type" });
+  }
+  const name = (params.get("name") || "").trim();
+  if (!isValidName(name)) {
+    return json(400, { code: "invalid_name" });
+  }
+  if (clientType === "New") {
+    const diet = params.get("diet") || "";
+    if (!isInRange(params.get("age"), "age")) return json(400, { code: "invalid_age" });
+    if (!isInRange(params.get("height_cm"), "height_cm")) return json(400, { code: "invalid_height" });
+    if (!isInRange(params.get("weight_kg"), "weight_kg")) return json(400, { code: "invalid_weight" });
+    if (!isValidDiet(diet)) return json(400, { code: "invalid_diet" });
   }
 
   let bytes;
   try {
     bytes = await req.arrayBuffer();
-  } catch (err) {
+  } catch {
     return json(400, { code: "upload_failed" });
   }
-  if (bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) {
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_FILE_BYTES) {
     return json(400, { code: "invalid_file_size" });
   }
 
@@ -84,9 +104,9 @@ export default async (req) => {
         apikey: serviceKey,
         Authorization: "Bearer " + serviceKey,
         "Content-Type": contentType,
-        "x-upsert": "false"
+        "x-upsert": "false",
       },
-      body: bytes
+      body: bytes,
     });
   } catch (err) {
     console.error("Storage upload request failed:", err);
@@ -100,9 +120,9 @@ export default async (req) => {
   }
 
   const rpcBody = {
-    p_name: params.get("name") || "",
+    p_name: name,
     p_phone: phone,
-    p_client_type: params.get("client_type") || "",
+    p_client_type: clientType,
     p_screenshot_path: path,
     p_age: numOrNull(params.get("age")),
     p_height_cm: numOrNull(params.get("height_cm")),
@@ -111,7 +131,7 @@ export default async (req) => {
     p_tc_agreed_at: strOrNull(params.get("tc_agreed_at")),
     p_tc_version: strOrNull(params.get("tc_version")),
     p_amount: numOrNull(params.get("amount")),
-    p_transaction_ref: strOrNull(params.get("transaction_ref"))
+    p_transaction_ref: strOrNull(params.get("transaction_ref")),
   };
 
   let rpcRes;
@@ -121,9 +141,9 @@ export default async (req) => {
       headers: {
         apikey: serviceKey,
         Authorization: "Bearer " + serviceKey,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(rpcBody)
+      body: JSON.stringify(rpcBody),
     });
   } catch (err) {
     console.error("submit_enrollment request failed:", err);
@@ -132,14 +152,14 @@ export default async (req) => {
   }
 
   if (!rpcRes.ok) {
-    const detail = await rpcRes.json().catch(function () { return {}; });
+    const detail = await rpcRes.json().catch(() => ({}));
     console.error("submit_enrollment rejected:", rpcRes.status, detail);
     await deleteObject(path, serviceKey);
-    return json(400, { code: (detail && detail.message) || "submission_failed" });
+    return json(400, { code: detail?.message || "submission_failed" });
   }
 
   return json(200, { ok: true });
-};
+}
 
 async function deleteObject(path, serviceKey) {
   try {
@@ -147,8 +167,8 @@ async function deleteObject(path, serviceKey) {
       method: "DELETE",
       headers: {
         apikey: serviceKey,
-        Authorization: "Bearer " + serviceKey
-      }
+        Authorization: "Bearer " + serviceKey,
+      },
     });
   } catch (err) {
     console.error("Cleanup delete failed for", path, err);
