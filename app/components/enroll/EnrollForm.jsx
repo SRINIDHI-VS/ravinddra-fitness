@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import Rail from "./Rail";
+import GymDecor from "@/app/components/GymDecor";
 import { CONTACT, upiDeepLink, whatsappLink } from "@/app/lib/siteConfig";
 import {
   isValidName,
@@ -331,6 +332,7 @@ export default function EnrollForm() {
 
   return (
     <div className="app">
+      <GymDecor />
       <div className="brand">
         <div className="brand-id">
           <Image className="brand-photo" src="/ravi.jpg" alt="Ravi, personal trainer" width={96} height={94} />
