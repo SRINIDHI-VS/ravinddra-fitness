@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
 import { exportPaymentsCsv } from "./csv";
 import { dedupeClients } from "@/app/lib/clients";
+import { waLinkTo } from "@/app/lib/siteConfig";
 import LogPaymentModal from "./LogPaymentModal";
 
 function formatDate(iso) {
@@ -16,6 +17,12 @@ function StatusBadge({ row }) {
   if (row.status === "confirmed") return <span className="badge badge-confirmed">Confirmed</span>;
   if (row.status === "rejected") return <span className="badge badge-rejected" title={row.rejection_reason || undefined}>Rejected</span>;
   return <span className="badge badge-pending">Pending</span>;
+}
+
+function rejectionMessage(row) {
+  const firstName = (row.clients?.name || "").trim().split(" ")[0] || "there";
+  const reasonPart = row.rejection_reason ? ` (${row.rejection_reason})` : "";
+  return `Hi ${firstName}, this is Ravi — I couldn't confirm your last payment screenshot${reasonPart}. Could you send it again, or a fresh one? Thanks!`;
 }
 
 async function viewProof(path, setBusyPath) {
@@ -31,11 +38,6 @@ async function viewProof(path, setBusyPath) {
 
 const DUPLICATE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 
-// A pending (unconfirmed) submission is worth a second look if the same
-// client already has a CONFIRMED payment within a few days of it — the
-// likely case being Ravi logged it manually and the client also uploaded a
-// screenshot for the same real-world payment. This only flags it; nothing
-// here merges or auto-rejects, since it's a guess, not a certainty.
 function findPossibleDuplicate(row, allRows) {
   if (row.status !== "submitted") return null;
   const clientId = row.clients?.id;
@@ -86,10 +88,24 @@ export default function PaymentsView({ rows, onReload }) {
     setStatus(id, { status: "rejected", rejection_reason: reason.trim() || null, confirmed_at: null });
   }
 
-  // Scoped to manually-logged rows only (enforced again at the DB level via
-  // RLS) — a client-submitted row keeps "Reject" instead, since deleting it
-  // would throw away the one record of what they actually sent, screenshot
-  // included.
+  function confirm(row) {
+    const fields = { status: "confirmed", confirmed_at: new Date().toISOString() };
+    if (row.amount == null) {
+      const input = prompt("Amount received (₹) — leave blank if you're not sure yet:", "");
+      if (input === null) return;
+      const trimmed = input.trim();
+      if (trimmed !== "") {
+        const parsed = Number(trimmed);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          alert("That doesn't look like a valid amount — payment was not confirmed. Try again.");
+          return;
+        }
+        fields.amount = parsed;
+      }
+    }
+    setStatus(row.id, fields);
+  }
+
   async function deleteManual(id) {
     if (!window.confirm("Delete this manually-logged payment? This can't be undone.")) return;
     setBusyId(id);
@@ -136,16 +152,16 @@ export default function PaymentsView({ rows, onReload }) {
               const dup = findPossibleDuplicate(r, rows);
               return (
                 <tr key={r.id}>
-                  <td>{formatDate(r.submitted_at)}</td>
-                  <td><div className="cell-name">{c.name || "—"}</div><div className="cell-sub">{c.phone || ""}</div></td>
-                  <td>
+                  <td data-label="Submitted">{formatDate(r.submitted_at)}</td>
+                  <td data-label="Client"><div className="cell-name">{c.name || "—"}</div><div className="cell-sub">{c.phone || ""}</div></td>
+                  <td data-label="Type">
                     <span className="badge badge-type">{r.client_type}</span>
                     {r.source === "admin_manual" && <span className="badge badge-manual">Manual</span>}
                   </td>
-                  <td className="cell-sub">{details}</td>
-                  <td>{r.amount != null ? "₹" + r.amount : "—"}</td>
-                  <td className="cell-sub">{r.transaction_ref || "—"}</td>
-                  <td>
+                  <td className="cell-sub" data-label="Details">{details}</td>
+                  <td data-label="Amount">{r.amount != null ? "₹" + r.amount : "—"}</td>
+                  <td className="cell-sub" data-label="Txn Ref">{r.transaction_ref || "—"}</td>
+                  <td data-label="Proof">
                     {r.screenshot_path ? (
                       <button className="row-btn view-btn" disabled={busyPath === r.screenshot_path} onClick={() => viewProof(r.screenshot_path, setBusyPath)}>
                         {busyPath === r.screenshot_path ? "…" : "View"}
@@ -154,7 +170,7 @@ export default function PaymentsView({ rows, onReload }) {
                       <span className="cell-sub">—</span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Status">
                     <StatusBadge row={r} />
                     {dup && (
                       <span className="badge badge-soon" title={`Possibly a duplicate — this client already has a confirmed payment on ${formatDate(dup.confirmed_at || dup.submitted_at)}`}>
@@ -163,7 +179,7 @@ export default function PaymentsView({ rows, onReload }) {
                     )}
                     {r.status === "submitted" && (
                       <>
-                        <button className="row-btn confirm-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "confirmed", confirmed_at: new Date().toISOString() })}>Mark confirmed</button>
+                        <button className="row-btn confirm-btn" disabled={busyId === r.id} onClick={() => confirm(r)}>Mark confirmed</button>
                         <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => reject(r.id)}>Reject</button>
                       </>
                     )}
@@ -171,7 +187,12 @@ export default function PaymentsView({ rows, onReload }) {
                       <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Undo</button>
                     )}
                     {r.status === "rejected" && (
-                      <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Restore</button>
+                      <>
+                        <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Restore</button>
+                        {c.phone && (
+                          <a className="row-btn" href={waLinkTo(c.phone, rejectionMessage(r))} target="_blank" rel="noopener">Notify</a>
+                        )}
+                      </>
                     )}
                     {r.source === "admin_manual" && (
                       <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => deleteManual(r.id)}>Delete</button>

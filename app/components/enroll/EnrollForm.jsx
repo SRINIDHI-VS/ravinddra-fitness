@@ -14,6 +14,7 @@ import {
   MAX_FILE_BYTES,
   ALLOWED_FILE_TYPES,
 } from "@/app/lib/validators";
+import { loadDraft, saveDraft, clearDraft } from "@/app/lib/enrollDraft";
 
 const PATHS = {
   New: { steps: ["details", "terms", "payment", "proof"], labels: ["Details", "Terms", "Payment", "Proof"] },
@@ -51,7 +52,6 @@ function errorMessageFor(code) {
   return ERROR_MESSAGES[code] || "Couldn't submit — check your internet connection and try again. If it keeps failing, message Ravi directly on WhatsApp.";
 }
 
-// Step crossfade — direction-aware so "back" visibly reverses "forward".
 const STEP_VARIANTS = {
   initial: (dir) => ({ opacity: 0, x: dir >= 0 ? 24 : -24 }),
   animate: { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.2, 0.8, 0.2, 1] } },
@@ -63,9 +63,9 @@ export default function EnrollForm() {
   const [posInPath, setPosInPath] = useState(0);
   const [direction, setDirection] = useState(1);
   const [done, setDone] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [showRestoredNote, setShowRestoredNote] = useState(false);
 
-  // Details (New) / Identify (Existing) — kept separate so switching client
-  // type never mixes up a half-filled draft from the other path.
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
@@ -76,37 +76,22 @@ export default function EnrollForm() {
   const [phoneEx, setPhoneEx] = useState("");
   const [existingName, setExistingName] = useState("");
   const [existingPaymentCount, setExistingPaymentCount] = useState(0);
-  // Two people can share one phone (a spouse, a parent). If whoever's typing
-  // gives a name that doesn't match what's on file, submitting as-is would
-  // silently rename the existing person's record — this stops that instead
-  // of assuming it's just a typo.
+  const [existingLastAmount, setExistingLastAmount] = useState(null);
   const [showNameConflict, setShowNameConflict] = useState(false);
   const [touched, setTouched] = useState({});
 
-  // Terms
   const [agreed, setAgreed] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [tcAgreedAt, setTcAgreedAt] = useState("");
-  // A callback-ref-backed state, not useRef: AnimatePresence (mode="wait")
-  // mounts the "terms" step's DOM only after the previous step's exit
-  // animation finishes, well after the stepKey state change that used to
-  // drive this effect. A useRef + `[stepKey]` dependency raced that delay —
-  // the effect fired first, saw a still-null ref, and nothing re-triggered
-  // it once the box actually mounted, so the scroll listener never
-  // attached. Keying the effect on the DOM node itself (via setState in the
-  // ref callback) makes it fire exactly when the node really exists.
   const [tcBox, setTcBox] = useState(null);
 
-  // Proof + submit
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [fileError, setFileError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErrorCode, setSubmitErrorCode] = useState(null);
 
-  // Phone-first lookup — this is what decides New vs Existing now, instead
-  // of asking the visitor to pick.
   const [checkingPhone, setCheckingPhone] = useState(false);
   const [phoneCheckErrorCode, setPhoneCheckErrorCode] = useState(null);
 
@@ -148,6 +133,7 @@ export default function EnrollForm() {
         setExistingName(body.name || "");
         setNameEx(body.name || "");
         setExistingPaymentCount(body.paymentCount || 0);
+        setExistingLastAmount(body.lastAmount ?? null);
       }
       setDirection(1);
       setClientType(type);
@@ -159,12 +145,6 @@ export default function EnrollForm() {
     }
   }
 
-  // Terms scroll-to-unlock. Depends on `tcBox` (the actual DOM node, set by
-  // the ref callback on the "terms" step's box), not on `stepKey` — so this
-  // runs exactly when the box really exists, however AnimatePresence times
-  // its mount, and cleans up exactly when it's removed. The check runs once
-  // right after the box has real layout, and again on every real scroll,
-  // and also drives the visible progress bar.
   useEffect(() => {
     if (!tcBox) return;
     const check = () => {
@@ -181,6 +161,55 @@ export default function EnrollForm() {
     if (!previewUrl) return;
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const draft = loadDraft();
+      if (draft) {
+        setClientType(draft.clientType ?? null);
+        setPosInPath(draft.posInPath ?? 0);
+        setName(draft.name ?? "");
+        setPhone(draft.phone ?? "");
+        setAge(draft.age ?? "");
+        setHeight(draft.height ?? "");
+        setWeight(draft.weight ?? "");
+        setDiet(draft.diet ?? "");
+        setNameEx(draft.nameEx ?? "");
+        setPhoneEx(draft.phoneEx ?? "");
+        setExistingName(draft.existingName ?? "");
+        setExistingPaymentCount(draft.existingPaymentCount ?? 0);
+        setExistingLastAmount(draft.existingLastAmount ?? null);
+        setAgreed(draft.agreed ?? false);
+        setUnlocked(draft.unlocked ?? false);
+        setTcAgreedAt(draft.tcAgreedAt ?? "");
+        setShowRestoredNote(true);
+      }
+      setDraftReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    if (!clientType) {
+      clearDraft();
+      return;
+    }
+    saveDraft({
+      clientType, posInPath,
+      name, phone, age, height, weight, diet,
+      nameEx, phoneEx, existingName, existingPaymentCount, existingLastAmount,
+      agreed, unlocked, tcAgreedAt,
+    });
+  }, [
+    draftReady, clientType, posInPath,
+    name, phone, age, height, weight, diet,
+    nameEx, phoneEx, existingName, existingPaymentCount, existingLastAmount,
+    agreed, unlocked, tcAgreedAt,
+  ]);
+
+  useEffect(() => {
+    if (done) clearDraft();
+  }, [done]);
 
   function validateDetails(showErrors) {
     const nameOk = isValidName(name);
@@ -319,6 +348,7 @@ export default function EnrollForm() {
       </div>
 
       {path && stepKey !== "done" && <Rail labels={path.labels} posInPath={posInPath} />}
+      {showRestoredNote && stepKey !== "done" && <p className="restored-note">↺ Continuing where you left off</p>}
 
       <div className="card">
         <AnimatePresence mode="wait" custom={direction}>
@@ -560,6 +590,9 @@ export default function EnrollForm() {
                 </div>
                 <CopyUpiButton />
               </div>
+              {clientType === "Existing" && existingLastAmount != null && (
+                <p className="last-amount-note">You paid ₹{existingLastAmount} last time — pay the same unless Ravi told you otherwise.</p>
+              )}
               <p className="amount-note">On your phone, tap &quot;Pay via UPI app&quot; to open PhonePe/GPay/Paytm directly — or scan the QR, or copy the UPI ID above into any UPI app. Confirm the amount with Ravi before paying if you haven&apos;t already.</p>
               <div className="actions">
                 <button type="button" className="btn btn-ghost" onClick={back}>← Back</button>
@@ -652,9 +685,6 @@ function Spinner() {
   return <span className="spinner" aria-hidden="true" />;
 }
 
-// Ten small gold particles radiating out from the done-badge and fading —
-// a restrained stand-in for confetti that fits a dark/gold premium palette
-// instead of a colorful party-popper look.
 function Burst() {
   const particles = useMemo(
     () =>

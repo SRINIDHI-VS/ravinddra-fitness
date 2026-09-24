@@ -15,15 +15,11 @@ function toLocalDatetimeValue(date) {
 }
 
 function isValidAmount(v) {
-  if (v === "" || v === null || v === undefined) return true; // optional
+  if (v === "" || v === null || v === undefined) return true;
   const n = Number(v);
   return Number.isFinite(n) && n >= 1 && n <= 100000;
 }
 
-// Lets the trainer log a payment himself — no screenshot needed, since he's
-// vouching for it directly (he already saw the UPI notification land). Used
-// both as a standalone "+ Log Payment" action and, pre-filled, as a
-// per-client "Log renewal" shortcut.
 export default function LogPaymentModal({ clients, rows, initialClient, onClose, onLogged }) {
   const [query, setQuery] = useState(initialClient ? initialClient.name || initialClient.phone : "");
   const [selected, setSelected] = useState(initialClient || null);

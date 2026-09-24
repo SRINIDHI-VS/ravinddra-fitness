@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
 import { isValidPhone } from "@/app/lib/validators";
 import { dedupeClients } from "@/app/lib/clients";
+import { exportClientsCsv } from "./csv";
 import LogPaymentModal from "./LogPaymentModal";
 
 function formatDate(iso) {
@@ -49,7 +50,10 @@ export default function ClientsView({ rows, onReload }) {
 
   return (
     <>
-      <p className="renewals-note">Every client who has ever submitted, with everything they gave you — no need to dig through email or WhatsApp.</p>
+      <div className="toolbar">
+        <p className="renewals-note" style={{ margin: 0 }}>Every client who has ever submitted, with everything they gave you — no need to dig through email or WhatsApp.</p>
+        <button className="btn btn-ghost" type="button" onClick={() => exportClientsCsv(rows)}>Export CSV</button>
+      </div>
       <div className="table-wrap">
         <table className="payments-table">
           <thead>
@@ -64,19 +68,19 @@ export default function ClientsView({ rows, onReload }) {
               return (
                 <Fragment key={c.id}>
                   <tr className="client-row" onClick={() => setExpandedId(isOpen ? null : c.id)}>
-                    <td>
+                    <td data-label="Client">
                       <button className="expand-btn" type="button" aria-expanded={isOpen} onClick={(e) => { e.stopPropagation(); setExpandedId(isOpen ? null : c.id); }}>
                         {isOpen ? "▾" : "▶"}
                       </button>
                       <div className="cell-name">{c.name || "—"}</div>
                       <div className="cell-sub">{c.phone || ""}</div>
                     </td>
-                    <td>{c.age != null ? c.age + " yrs" : "—"}</td>
-                    <td>{c.height_cm != null ? c.height_cm + " cm" : "—"}</td>
-                    <td>{c.weight_kg != null ? c.weight_kg + " kg" : "—"}</td>
-                    <td>{c.diet || "—"}</td>
-                    <td>{c.paymentCount}</td>
-                    <td>
+                    <td data-label="Age">{c.age != null ? c.age + " yrs" : "—"}</td>
+                    <td data-label="Height">{c.height_cm != null ? c.height_cm + " cm" : "—"}</td>
+                    <td data-label="Weight">{c.weight_kg != null ? c.weight_kg + " kg" : "—"}</td>
+                    <td data-label="Diet">{c.diet || "—"}</td>
+                    <td data-label="Payments">{c.paymentCount}</td>
+                    <td data-label="T&C Agreed">
                       {c.tcAgreedAt ? formatDate(c.tcAgreedAt) : "—"}
                       <button className="row-btn edit-client-btn" type="button" disabled={busyId === c.id} onClick={(e) => { e.stopPropagation(); editClient(c); }}>Edit</button>
                       <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); setLogClient(c); }}>Log renewal</button>
@@ -90,9 +94,9 @@ export default function ClientsView({ rows, onReload }) {
                           <tbody>
                             {history.map((r) => (
                               <tr key={r.id}>
-                                <td>{formatDate(r.submitted_at)}</td>
-                                <td><span className="badge badge-type">{r.client_type}</span></td>
-                                <td>{r.status === "confirmed" ? <span className="badge badge-confirmed">Confirmed</span> : <span className="badge badge-pending">Pending</span>}</td>
+                                <td data-label="Submitted">{formatDate(r.submitted_at)}</td>
+                                <td data-label="Type"><span className="badge badge-type">{r.client_type}</span></td>
+                                <td data-label="Status">{r.status === "confirmed" ? <span className="badge badge-confirmed">Confirmed</span> : <span className="badge badge-pending">Pending</span>}</td>
                               </tr>
                             ))}
                           </tbody>

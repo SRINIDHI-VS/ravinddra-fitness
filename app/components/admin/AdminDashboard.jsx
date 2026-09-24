@@ -12,17 +12,22 @@ function computeStats(rows) {
   const now = new Date();
   let thisMonthCount = 0;
   let pendingCount = 0;
+  let revenueThisMonth = 0;
   rows.forEach((r) => {
     if (r.clients) uniqueClients.add(r.clients.id);
     const d = new Date(r.submitted_at);
     if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) thisMonthCount++;
     if (r.status === "submitted") pendingCount++;
+    if (r.status === "confirmed" && r.amount != null && r.confirmed_at) {
+      const cd = new Date(r.confirmed_at);
+      if (cd.getFullYear() === now.getFullYear() && cd.getMonth() === now.getMonth()) revenueThisMonth += r.amount;
+    }
   });
-  return { clients: uniqueClients.size, thisMonth: thisMonthCount, pending: pendingCount };
+  return { clients: uniqueClients.size, thisMonth: thisMonthCount, pending: pendingCount, revenueThisMonth };
 }
 
 export default function AdminDashboard() {
-  const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
+  const [session, setSession] = useState(undefined);
   const [rows, setRows] = useState([]);
   const [loadingRows, setLoadingRows] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -54,11 +59,6 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!session) return;
-    // Deferred a tick on purpose: loadPayments sets state as its very first
-    // step, and calling a state-setting function synchronously inside an
-    // effect body (rather than in response to an external event) is what
-    // react-hooks/set-state-in-effect is warning against — this queues it
-    // as a microtask instead, after this render has committed.
     queueMicrotask(loadPayments);
   }, [session, loadPayments]);
 
@@ -80,6 +80,10 @@ export default function AdminDashboard() {
       <div className="stat-grid">
         <div className="stat-card"><span className="stat-num">{loadingRows ? "–" : stats.clients}</span><span className="stat-label">Total clients</span></div>
         <div className="stat-card"><span className="stat-num">{loadingRows ? "–" : stats.thisMonth}</span><span className="stat-label">Payments this month</span></div>
+        <div className="stat-card" title="Confirmed payments this month with an amount on file. Older confirmations logged without an amount aren't counted.">
+          <span className="stat-num">{loadingRows ? "–" : "₹" + stats.revenueThisMonth.toLocaleString("en-IN")}</span>
+          <span className="stat-label">Revenue this month</span>
+        </div>
         <div className="stat-card"><span className="stat-num">{loadingRows ? "–" : stats.pending}</span><span className="stat-label">Pending confirmation</span></div>
       </div>
 

@@ -1,8 +1,3 @@
-// Vercel Cron hits this once a day (see vercel.json). Daily, not weekly: Supabase's
-// free tier auto-pauses a project after 7 days with no API activity — a weekly ping
-// sits right at that edge, and one slightly late run pauses the whole backend.
-// Daily leaves real margin.
-
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

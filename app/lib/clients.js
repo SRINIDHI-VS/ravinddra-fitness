@@ -1,7 +1,3 @@
-// Shared by ClientsView and LogPaymentModal so there's one definition of
-// "the client list, deduped from payment rows" instead of two copies that
-// can drift apart.
-
 export function dedupeClients(rows) {
   const byClient = {};
   rows.forEach((r) => {
@@ -29,9 +25,6 @@ export function dedupeClients(rows) {
   return Object.values(byClient).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 }
 
-// Prefills the admin's manual "Log Payment" amount field with whatever this
-// client paid last time, so a recurring renewal doesn't need retyping the
-// same number every 4 weeks.
 export function lastPaymentAmount(rows, clientId) {
   const forClient = rows
     .filter((r) => r.clients && r.clients.id === clientId && r.amount != null)

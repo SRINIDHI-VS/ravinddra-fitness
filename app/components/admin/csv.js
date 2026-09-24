@@ -1,7 +1,5 @@
-// A client's name or transaction reference isn't validated for spreadsheet-safe
-// characters server-side, so a value starting with =, +, - or @ could be read as
-// a formula by Excel/Sheets when this file is opened there. Prefixing it with a
-// quote keeps it as inert text without changing what's shown.
+import { dedupeClients } from "@/app/lib/clients";
+
 function csvField(v) {
   let s = v == null ? "" : String(v);
   if (/^[=+\-@]/.test(s)) s = "'" + s;
@@ -24,6 +22,32 @@ export function exportPaymentsCsv(rows) {
   const a = document.createElement("a");
   a.href = url;
   a.download = "ravi-fitness-payments-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function exportClientsCsv(rows) {
+  const clients = dedupeClients(rows);
+  const header = ["Name", "Phone", "Age", "Height (cm)", "Weight (kg)", "Diet", "Total Payments", "T&C Agreed", "Last Payment Date", "Last Payment Status"];
+  const lines = [header.map(csvField).join(",")];
+  clients.forEach((c) => {
+    const history = rows
+      .filter((r) => r.clients && r.clients.id === c.id)
+      .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+    const last = history[0];
+    lines.push(
+      [c.name, c.phone, c.age, c.height_cm, c.weight_kg, c.diet, c.paymentCount, c.tcAgreedAt, last ? last.submitted_at : "", last ? last.status : ""]
+        .map(csvField)
+        .join(",")
+    );
+  });
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "ravi-fitness-clients-" + new Date().toISOString().slice(0, 10) + ".csv";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

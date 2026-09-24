@@ -1,19 +1,3 @@
-// Handles the whole public submission: uploads the payment-proof screenshot and
-// writes the enrollment record, both using the Supabase service-role key (set as
-// SUPABASE_SERVICE_ROLE_KEY in Vercel's project environment variables — never in
-// this file, never in NEXT_PUBLIC_* — no name that ships to the browser).
-//
-// Doing this server-side, in one place, is what lets the public site have ZERO
-// direct access to the storage bucket: with no anon policy on storage.objects,
-// nobody can list or download other clients' screenshots using the (unavoidably
-// public) anon key. It also means a submission that uploads fine but then fails
-// the database write doesn't leave an orphaned file behind — this route deletes
-// it again before reporting the error back to the visitor.
-//
-// Every field here is re-validated with the exact same rules as the browser form
-// (app/lib/validators.js, shared by both) — this endpoint is a public URL, so
-// anyone can POST to it directly and skip the browser entirely.
-
 import {
   isValidName,
   isValidPhone,

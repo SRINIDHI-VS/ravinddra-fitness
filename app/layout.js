@@ -8,8 +8,6 @@ import "@fontsource/big-shoulders-display/800";
 import "@fontsource/big-shoulders-display/900";
 import "./globals.css";
 
-// This is a client-facing enrollment tool, not a page anyone should find in Google —
-// hence robots: noindex, unlike the public portfolio site.
 export const metadata = {
   title: "Ravi Fitness — Enrollment",
   description: "Enroll with Ravi or submit your next payment.",

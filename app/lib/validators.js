@@ -1,10 +1,3 @@
-// Shared between the browser form (app/components/enroll/EnrollForm.jsx) and the
-// server route (app/api/submit-enrollment/route.js) on purpose: the old vanilla-JS
-// version had two separate copies of these rules that drifted apart, and the server
-// copy was missing several checks entirely — anyone could POST straight to the
-// function URL with an out-of-range age or an unvalidated name. One shared file
-// means the browser and the server can never disagree about what's valid again.
-
 export const NAME_RE = /^[A-Za-z][A-Za-z .'-]{1,99}$/;
 export const PHONE_RE = /^[6-9]\d{9}$/;
 export const DIET_VALUES = ["Veg", "Non-veg"];

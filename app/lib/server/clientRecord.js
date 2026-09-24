@@ -1,10 +1,3 @@
-// Server-only: looks a phone number up against clients/payments using the
-// Supabase service-role key. Shared by /api/lookup-client (New vs Existing,
-// plus the welcome-back personalization) and /api/client-status (the
-// self-serve status page), so both agree on what counts as a client and what
-// counts as a completed enrollment — the same definition submit_enrollment
-// itself uses (a payment with tc_agreed_at set).
-
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 export async function findClientByPhone(phone, serviceKey) {
@@ -28,7 +21,7 @@ export async function findClientByPhone(phone, serviceKey) {
   const client = clients[0];
   const paymentsRes = await fetch(
     SUPABASE_URL + "/rest/v1/payments?client_id=eq." + encodeURIComponent(client.id) +
-      "&select=id,status,tc_agreed_at,submitted_at,confirmed_at&order=submitted_at.asc",
+      "&select=id,status,tc_agreed_at,submitted_at,confirmed_at,amount&order=submitted_at.asc",
     { headers }
   );
   if (!paymentsRes.ok) {

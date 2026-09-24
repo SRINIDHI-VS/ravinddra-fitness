@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CONTACT, waLinkTo } from "@/app/lib/siteConfig";
 
 const CYCLE_DAYS = 28;
@@ -12,9 +13,6 @@ function formatDate(iso) {
 }
 
 function computeRenewals(rows) {
-  // Based on the last CONFIRMED payment, not merely submitted — a screenshot
-  // sitting in "pending" hasn't actually been verified yet, so it shouldn't
-  // reset anyone's cycle.
   const byClient = {};
   rows.forEach((r) => {
     if (r.status !== "confirmed" || !r.confirmed_at) return;
@@ -44,9 +42,6 @@ function statusLabel(row) {
   return "Due in " + row.daysUntil + " days";
 }
 
-// One tap opens WhatsApp with this pre-filled — Ravi still has to hit send
-// himself. Real automation (no tap required) needs WhatsApp Business API,
-// which isn't set up yet.
 function reminderMessage(row) {
   const firstName = (row.name || "").trim().split(" ")[0] || "there";
   if (row.status === "overdue") {
@@ -60,27 +55,40 @@ function reminderMessage(row) {
 }
 
 export default function RenewalsView({ rows }) {
+  const [search, setSearch] = useState("");
   const renewals = computeRenewals(rows);
-  const msg = rows.length ? "No confirmed payments yet — renewals appear here once you confirm one." : "No clients yet.";
+  const filtered = renewals.filter((r) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (r.name || "").toLowerCase().includes(q) || (r.phone || "").includes(search);
+  });
+  const emptyMsg = !rows.length
+    ? "No clients yet."
+    : !renewals.length
+    ? "No confirmed payments yet — renewals appear here once you confirm one."
+    : "No clients match that search.";
 
   return (
     <>
       <p className="renewals-note">Next due date is estimated as each client&apos;s last submitted payment + 4 weeks (the week-wise cycle from your terms). Overdue means that estimate has already passed.</p>
+      <div className="toolbar" style={{ justifyContent: "flex-end" }}>
+        <input type="text" className="search-input" style={{ flex: "0 1 280px" }} placeholder="Search name or phone…" value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
       <div className="table-wrap">
         <table className="payments-table">
           <thead>
             <tr><th>Client</th><th>Last Payment</th><th>Next Due (est.)</th><th>Status</th></tr>
           </thead>
           <tbody>
-            {renewals.length === 0 && <tr><td colSpan={4} className="loading-cell">{msg}</td></tr>}
-            {renewals.map((r) => {
+            {filtered.length === 0 && <tr><td colSpan={4} className="loading-cell">{emptyMsg}</td></tr>}
+            {filtered.map((r) => {
               const badgeClass = r.status === "overdue" ? "badge-overdue" : r.status === "soon" ? "badge-soon" : "badge-ok";
               return (
                 <tr key={r.phone}>
-                  <td><div className="cell-name">{r.name}</div><div className="cell-sub">{r.phone}</div></td>
-                  <td>{formatDate(r.lastDate.toISOString())}</td>
-                  <td>{formatDate(r.nextDue.toISOString())}</td>
-                  <td>
+                  <td data-label="Client"><div className="cell-name">{r.name}</div><div className="cell-sub">{r.phone}</div></td>
+                  <td data-label="Last Payment">{formatDate(r.lastDate.toISOString())}</td>
+                  <td data-label="Next Due (est.)">{formatDate(r.nextDue.toISOString())}</td>
+                  <td data-label="Status">
                     <span className={"badge " + badgeClass}>{statusLabel(r)}</span>
                     {r.status !== "ok" && (
                       <a className="row-btn" href={waLinkTo(r.phone, reminderMessage(r))} target="_blank" rel="noopener">Remind</a>

@@ -21,10 +21,30 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function daysAgoLabel(iso) {
+  if (!iso) return null;
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 60 * 60 * 1000));
+  if (diff <= 0) return "today";
+  if (diff === 1) return "yesterday";
+  if (diff < 30) return diff + " days ago";
+  const months = Math.round(diff / 30);
+  return months <= 1 ? "about a month ago" : months + " months ago";
+}
+
 function StatusBadge({ status }) {
   if (status === "confirmed") return <span className="badge badge-confirmed">Confirmed</span>;
   if (status === "rejected") return <span className="badge badge-rejected">Rejected</span>;
   return <span className="badge badge-pending">Pending</span>;
+}
+
+function StatusIconBadge({ status }) {
+  const normalized = status === "confirmed" || status === "rejected" ? status : "pending";
+  const icon = normalized === "confirmed" ? "✓" : normalized === "rejected" ? "✕" : "⏳";
+  return (
+    <div className="status-badge-wrap">
+      <div className={"status-icon-badge " + normalized}>{icon}</div>
+    </div>
+  );
 }
 
 export default function StatusCheck() {
@@ -104,11 +124,20 @@ export default function StatusCheck() {
                 exit={{ opacity: 0 }}
                 className="status-result"
               >
+                <StatusIconBadge status={result.lastPayment.status} />
                 <h3 className="display status-name">{result.name}</h3>
                 <div className="summary">
                   <div className="summary-row"><span>Member since</span><span>{formatDate(result.memberSince)}</span></div>
                   <div className="summary-row"><span>Payments made</span><span>{result.totalPayments}</span></div>
-                  <div className="summary-row"><span>Last payment</span><span>{formatDate(result.lastPayment.submittedAt)}</span></div>
+                  <div className="summary-row">
+                    <span>Last payment</span>
+                    <span>
+                      {formatDate(result.lastPayment.submittedAt)}
+                      {daysAgoLabel(result.lastPayment.submittedAt) && (
+                        <span className="cell-sub"> · {daysAgoLabel(result.lastPayment.submittedAt)}</span>
+                      )}
+                    </span>
+                  </div>
                   <div className="summary-row">
                     <span>Status</span>
                     <StatusBadge status={result.lastPayment.status} />
@@ -126,7 +155,8 @@ export default function StatusCheck() {
                 exit={{ opacity: 0 }}
                 className="status-result"
               >
-                <p className="amount-note">We don&apos;t have a completed enrollment on file for this number yet.</p>
+                <div className="not-found-icon" aria-hidden="true">🔍</div>
+                <p className="amount-note" style={{ textAlign: "center" }}>We don&apos;t have a completed enrollment on file for this number yet.</p>
                 <Link className="btn btn-primary status-enroll-link" href="/">Enroll now →</Link>
               </motion.div>
             )}
