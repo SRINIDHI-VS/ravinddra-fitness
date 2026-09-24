@@ -5,6 +5,7 @@ import { supabase } from "@/app/lib/supabaseClient";
 import { dedupeClients } from "@/app/lib/clients";
 import { exportSessionsCsv } from "./csv";
 import LogSessionModal from "./LogSessionModal";
+import ConfirmDialog from "./ConfirmDialog";
 
 const STATUS_META = {
   completed: { label: "Completed", badge: "badge-confirmed" },
@@ -23,8 +24,10 @@ function formatDateOnly(dateStr) {
 export default function AttendanceView({ rows, paymentRows, onReload }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [busyId, setBusyId] = useState(null);
   const [showLogModal, setShowLogModal] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   const clients = dedupeClients(paymentRows);
 
@@ -42,15 +45,27 @@ export default function AttendanceView({ rows, paymentRows, onReload }) {
       return name.includes(search.toLowerCase()) || phone.includes(search);
     });
 
-  async function deleteSession(id) {
-    if (!window.confirm("Delete this session record? This can't be undone.")) return;
-    setBusyId(id);
-    const { error } = await supabase.from("class_sessions").delete().eq("id", id);
-    setBusyId(null);
+  function askDeleteSession(id) {
+    setPendingDeleteId(id);
+    setDeleteError(null);
+  }
+
+  function cancelDeleteSession() {
+    if (deleteBusy) return;
+    setPendingDeleteId(null);
+    setDeleteError(null);
+  }
+
+  async function confirmDeleteSession() {
+    setDeleteBusy(true);
+    setDeleteError(null);
+    const { error } = await supabase.from("class_sessions").delete().eq("id", pendingDeleteId);
+    setDeleteBusy(false);
     if (error) {
-      alert("Could not delete. Try again.");
+      setDeleteError("Could not delete. Try again.");
       return;
     }
+    setPendingDeleteId(null);
     onReload();
   }
 
@@ -88,7 +103,7 @@ export default function AttendanceView({ rows, paymentRows, onReload }) {
                   <td data-label="Status"><span className={"badge " + meta.badge}>{meta.label}</span></td>
                   <td className="cell-sub" data-label="Notes">{r.notes || "—"}</td>
                   <td data-label="Actions">
-                    <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => deleteSession(r.id)}>Delete</button>
+                    <button className="row-btn reject-btn" onClick={() => askDeleteSession(r.id)}>Delete</button>
                   </td>
                 </tr>
               );
@@ -103,6 +118,19 @@ export default function AttendanceView({ rows, paymentRows, onReload }) {
           initialClient={null}
           onClose={() => setShowLogModal(false)}
           onLogged={onReload}
+        />
+      )}
+
+      {pendingDeleteId && (
+        <ConfirmDialog
+          title="Delete session record?"
+          message="This can't be undone."
+          confirmLabel="Delete"
+          danger
+          busy={deleteBusy}
+          error={deleteError}
+          onConfirm={confirmDeleteSession}
+          onCancel={cancelDeleteSession}
         />
       )}
     </div>

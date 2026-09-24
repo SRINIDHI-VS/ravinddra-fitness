@@ -1,11 +1,10 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { supabase } from "@/app/lib/supabaseClient";
-import { isValidPhone } from "@/app/lib/validators";
 import { dedupeClients } from "@/app/lib/clients";
 import { exportClientsCsv } from "./csv";
 import LogPaymentModal from "./LogPaymentModal";
+import EditClientModal from "./EditClientModal";
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -15,28 +14,9 @@ function formatDate(iso) {
 
 export default function ClientsView({ rows, onReload }) {
   const [expandedId, setExpandedId] = useState(null);
-  const [busyId, setBusyId] = useState(null);
   const [logClient, setLogClient] = useState(null);
+  const [editingClient, setEditingClient] = useState(null);
   const clients = dedupeClients(rows);
-
-  async function editClient(client) {
-    let newName = prompt("Client name:", client.name || "");
-    if (newName === null) return;
-    newName = newName.trim();
-    if (newName.length < 2) { alert("Name must be at least 2 letters."); return; }
-    let newPhone = prompt("Phone number (10 digits, starting 6-9):", client.phone || "");
-    if (newPhone === null) return;
-    newPhone = newPhone.trim();
-    if (!isValidPhone(newPhone)) { alert("That doesn't look like a valid 10-digit phone number."); return; }
-    setBusyId(client.id);
-    const { error } = await supabase.from("clients").update({ name: newName, phone: newPhone }).eq("id", client.id);
-    setBusyId(null);
-    if (error) {
-      alert(error.message && error.message.includes("duplicate") ? "Another client already has that phone number." : "Could not update. Try again.");
-      return;
-    }
-    onReload();
-  }
 
   if (!clients.length) {
     return (
@@ -82,7 +62,7 @@ export default function ClientsView({ rows, onReload }) {
                     <td data-label="Payments">{c.paymentCount}</td>
                     <td data-label="T&C Agreed">
                       {c.tcAgreedAt ? formatDate(c.tcAgreedAt) : "—"}
-                      <button className="row-btn edit-client-btn" type="button" disabled={busyId === c.id} onClick={(e) => { e.stopPropagation(); editClient(c); }}>Edit</button>
+                      <button className="row-btn edit-client-btn" type="button" onClick={(e) => { e.stopPropagation(); setEditingClient(c); }}>Edit</button>
                       <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); setLogClient(c); }}>Log renewal</button>
                     </td>
                   </tr>
@@ -118,6 +98,14 @@ export default function ClientsView({ rows, onReload }) {
           initialClient={logClient}
           onClose={() => setLogClient(null)}
           onLogged={onReload}
+        />
+      )}
+
+      {editingClient && (
+        <EditClientModal
+          client={editingClient}
+          onClose={() => setEditingClient(null)}
+          onSaved={onReload}
         />
       )}
     </>

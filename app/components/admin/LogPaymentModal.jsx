@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/app/lib/supabaseClient";
 import { lastPaymentAmount } from "@/app/lib/clients";
-import { isValidName, isValidPhone } from "@/app/lib/validators";
+import { isValidName, isValidPhone, isValidAmount } from "@/app/lib/validators";
 
 function toLocalDatetimeValue(date) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -12,12 +12,6 @@ function toLocalDatetimeValue(date) {
     date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
     "T" + pad(date.getHours()) + ":" + pad(date.getMinutes())
   );
-}
-
-function isValidAmount(v) {
-  if (v === "" || v === null || v === undefined) return true;
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 1 && n <= 100000;
 }
 
 export default function LogPaymentModal({ clients, rows, initialClient, onClose, onLogged }) {

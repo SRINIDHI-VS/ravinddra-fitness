@@ -255,6 +255,16 @@ a { color: inherit; text-decoration: none; }
 .btn-ghost { background: var(--surface-raised); color: var(--text); border: 1px solid var(--border); flex: 0 0 auto; padding-inline: 18px; transition: border-color 0.15s, color 0.15s; }
 .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
 
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: color-mix(in srgb, var(--danger) 85%, white); }
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-danger .spinner { border-color: color-mix(in srgb, #fff 30%, transparent); border-top-color: #fff; }
+
+.toast-stack { position: fixed; left: 0; right: 0; bottom: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 200; pointer-events: none; padding: 0 16px; }
+.toast { pointer-events: auto; cursor: pointer; max-width: 420px; width: 100%; font-size: 13px; font-weight: 700; line-height: 1.45; padding: 13px 16px; border-radius: 12px; box-shadow: 0 16px 40px var(--shadow); border: 1px solid var(--border); }
+.toast-error { background: var(--danger-bg); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+.toast-success { background: color-mix(in srgb, var(--success) 16%, var(--surface-raised)); color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); }
+
 .warn-box { background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); color: var(--warn); font-size: 12px; font-weight: 700; border-radius: 10px; padding: 10px 12px; margin-bottom: 16px; }
 
 .done-wrap { text-align: center; padding: 10px 0 4px; }

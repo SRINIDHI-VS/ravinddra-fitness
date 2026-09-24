@@ -5,7 +5,11 @@ import { supabase } from "@/app/lib/supabaseClient";
 import { exportPaymentsCsv } from "./csv";
 import { dedupeClients } from "@/app/lib/clients";
 import { waLinkTo } from "@/app/lib/siteConfig";
+import { isValidAmount } from "@/app/lib/validators";
 import LogPaymentModal from "./LogPaymentModal";
+import ConfirmDialog from "./ConfirmDialog";
+import PromptDialog from "./PromptDialog";
+import { useToast } from "./Toast";
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -25,12 +29,12 @@ function rejectionMessage(row) {
   return `Hi ${firstName}, this is Ravi — I couldn't confirm your last payment screenshot${reasonPart}. Could you send it again, or a fresh one? Thanks!`;
 }
 
-async function viewProof(path, setBusyPath) {
+async function viewProof(path, setBusyPath, showToast) {
   setBusyPath(path);
   const { data, error } = await supabase.storage.from("payment-proofs").createSignedUrl(path, 120);
   setBusyPath(null);
   if (error || !data) {
-    alert("Could not load screenshot.");
+    showToast("Could not load screenshot. Try again.", "error");
     return;
   }
   window.open(data.signedUrl, "_blank", "noopener");
@@ -60,6 +64,19 @@ export default function PaymentsView({ rows, onReload }) {
   const [busyId, setBusyId] = useState(null);
   const [busyPath, setBusyPath] = useState(null);
   const [showLogModal, setShowLogModal] = useState(false);
+  const toast = useToast();
+
+  const [rejectId, setRejectId] = useState(null);
+  const [rejectBusy, setRejectBusy] = useState(false);
+  const [rejectError, setRejectError] = useState(null);
+
+  const [confirmRow, setConfirmRow] = useState(null);
+  const [confirmAmountBusy, setConfirmAmountBusy] = useState(false);
+  const [confirmAmountError, setConfirmAmountError] = useState(null);
+
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   const filtered = rows
     .filter((r) => (filter === "all" ? true : filter === "pending" ? r.status === "submitted" : filter === "confirmed" ? r.status === "confirmed" : r.status === "rejected"))
@@ -76,45 +93,90 @@ export default function PaymentsView({ rows, onReload }) {
     const { error } = await supabase.from("payments").update(fields).eq("id", id);
     setBusyId(null);
     if (error) {
-      alert("Could not update. Try again.");
+      toast("Could not update. Try again.", "error");
       return;
     }
     onReload();
   }
 
-  function reject(id) {
-    const reason = prompt("Reason for rejecting this payment (shown only in the admin view):", "");
-    if (reason === null) return;
-    setStatus(id, { status: "rejected", rejection_reason: reason.trim() || null, confirmed_at: null });
+  function openReject(id) {
+    setRejectId(id);
+    setRejectError(null);
   }
 
-  function confirm(row) {
-    const fields = { status: "confirmed", confirmed_at: new Date().toISOString() };
-    if (row.amount == null) {
-      const input = prompt("Amount received (₹) — leave blank if you're not sure yet:", "");
-      if (input === null) return;
-      const trimmed = input.trim();
-      if (trimmed !== "") {
-        const parsed = Number(trimmed);
-        if (!Number.isFinite(parsed) || parsed <= 0) {
-          alert("That doesn't look like a valid amount — payment was not confirmed. Try again.");
-          return;
-        }
-        fields.amount = parsed;
-      }
-    }
-    setStatus(row.id, fields);
+  function cancelReject() {
+    if (rejectBusy) return;
+    setRejectId(null);
+    setRejectError(null);
   }
 
-  async function deleteManual(id) {
-    if (!window.confirm("Delete this manually-logged payment? This can't be undone.")) return;
-    setBusyId(id);
-    const { error } = await supabase.from("payments").delete().eq("id", id);
-    setBusyId(null);
+  async function submitReject(reason) {
+    setRejectBusy(true);
+    setRejectError(null);
+    const { error } = await supabase
+      .from("payments")
+      .update({ status: "rejected", rejection_reason: reason || null, confirmed_at: null })
+      .eq("id", rejectId);
+    setRejectBusy(false);
     if (error) {
-      alert("Could not delete. Try again.");
+      setRejectError("Could not update. Try again.");
       return;
     }
+    setRejectId(null);
+    onReload();
+  }
+
+  function confirmPayment(row) {
+    if (row.amount == null) {
+      setConfirmRow(row);
+      setConfirmAmountError(null);
+      return;
+    }
+    setStatus(row.id, { status: "confirmed", confirmed_at: new Date().toISOString() });
+  }
+
+  function cancelConfirmAmount() {
+    if (confirmAmountBusy) return;
+    setConfirmRow(null);
+    setConfirmAmountError(null);
+  }
+
+  async function submitConfirmAmount(value) {
+    const fields = { status: "confirmed", confirmed_at: new Date().toISOString() };
+    if (value !== "") fields.amount = Number(value);
+    setConfirmAmountBusy(true);
+    setConfirmAmountError(null);
+    const { error } = await supabase.from("payments").update(fields).eq("id", confirmRow.id);
+    setConfirmAmountBusy(false);
+    if (error) {
+      setConfirmAmountError("Could not update. Try again.");
+      return;
+    }
+    setConfirmRow(null);
+    onReload();
+  }
+
+  function askDeleteManual(id) {
+    setPendingDeleteId(id);
+    setDeleteError(null);
+  }
+
+  function cancelDeleteManual() {
+    if (deleteBusy) return;
+    setPendingDeleteId(null);
+    setDeleteError(null);
+  }
+
+  async function confirmDeleteManual() {
+    setDeleteBusy(true);
+    setDeleteError(null);
+    const { error } = await supabase.from("payments").delete().eq("id", pendingDeleteId);
+    setDeleteBusy(false);
+    if (error) {
+      setDeleteError("Could not delete. Try again.");
+      return;
+    }
+    setPendingDeleteId(null);
     onReload();
   }
 
@@ -163,7 +225,7 @@ export default function PaymentsView({ rows, onReload }) {
                   <td className="cell-sub" data-label="Txn Ref">{r.transaction_ref || "—"}</td>
                   <td data-label="Proof">
                     {r.screenshot_path ? (
-                      <button className="row-btn view-btn" disabled={busyPath === r.screenshot_path} onClick={() => viewProof(r.screenshot_path, setBusyPath)}>
+                      <button className="row-btn view-btn" disabled={busyPath === r.screenshot_path} onClick={() => viewProof(r.screenshot_path, setBusyPath, toast)}>
                         {busyPath === r.screenshot_path ? "…" : "View"}
                       </button>
                     ) : (
@@ -179,8 +241,8 @@ export default function PaymentsView({ rows, onReload }) {
                     )}
                     {r.status === "submitted" && (
                       <>
-                        <button className="row-btn confirm-btn" disabled={busyId === r.id} onClick={() => confirm(r)}>Mark confirmed</button>
-                        <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => reject(r.id)}>Reject</button>
+                        <button className="row-btn confirm-btn" disabled={busyId === r.id} onClick={() => confirmPayment(r)}>Mark confirmed</button>
+                        <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => openReject(r.id)}>Reject</button>
                       </>
                     )}
                     {r.status === "confirmed" && (
@@ -195,7 +257,7 @@ export default function PaymentsView({ rows, onReload }) {
                       </>
                     )}
                     {r.source === "admin_manual" && (
-                      <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => deleteManual(r.id)}>Delete</button>
+                      <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => askDeleteManual(r.id)}>Delete</button>
                     )}
                   </td>
                 </tr>
@@ -212,6 +274,54 @@ export default function PaymentsView({ rows, onReload }) {
           initialClient={null}
           onClose={() => setShowLogModal(false)}
           onLogged={onReload}
+        />
+      )}
+
+      {rejectId && (
+        <PromptDialog
+          title="Reject this payment"
+          message="Shown only in the admin view — the client won't see this."
+          label="Reason (optional)"
+          type="text"
+          placeholder="e.g. blurry screenshot, wrong amount"
+          optional
+          confirmLabel="Reject"
+          busy={rejectBusy}
+          submitError={rejectError}
+          onSubmit={submitReject}
+          onCancel={cancelReject}
+        />
+      )}
+
+      {confirmRow && (
+        <PromptDialog
+          title="Confirm this payment"
+          message="Enter the amount you received, or leave it blank if you're not sure yet."
+          label="Amount (₹)"
+          type="number"
+          inputMode="decimal"
+          placeholder="e.g. 1500"
+          optional
+          validate={isValidAmount}
+          errorMessage="Enter an amount between ₹1 and ₹1,00,000, or leave it blank."
+          confirmLabel="Confirm"
+          busy={confirmAmountBusy}
+          submitError={confirmAmountError}
+          onSubmit={submitConfirmAmount}
+          onCancel={cancelConfirmAmount}
+        />
+      )}
+
+      {pendingDeleteId && (
+        <ConfirmDialog
+          title="Delete this payment?"
+          message="This manually-logged payment record will be permanently removed."
+          confirmLabel="Delete"
+          danger
+          busy={deleteBusy}
+          error={deleteError}
+          onConfirm={confirmDeleteManual}
+          onCancel={cancelDeleteManual}
         />
       )}
     </div>

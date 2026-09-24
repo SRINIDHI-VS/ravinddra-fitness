@@ -7,6 +7,7 @@ import PaymentsView from "./PaymentsView";
 import ClientsView from "./ClientsView";
 import RenewalsView from "./RenewalsView";
 import AttendanceView from "./AttendanceView";
+import { ToastProvider } from "./Toast";
 
 function computeStats(rows) {
   const uniqueClients = new Set();
@@ -89,6 +90,7 @@ export default function AdminDashboard() {
   const stats = computeStats(rows);
 
   return (
+    <ToastProvider>
     <div className="admin-shell">
       <header className="admin-header">
         <div>
@@ -126,5 +128,6 @@ export default function AdminDashboard() {
         <AttendanceView rows={sessionRows} paymentRows={rows} onReload={loadSessions} />
       )}
     </div>
+    </ToastProvider>
   );
 }

@@ -32,5 +32,11 @@ export function isValidClientType(v) {
   return CLIENT_TYPES.includes(v);
 }
 
+export function isValidAmount(v) {
+  if (v === "" || v === null || v === undefined) return true;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 && n <= 100000;
+}
+
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_FILE_TYPES = ["image/png", "image/jpeg", "image/webp"];
