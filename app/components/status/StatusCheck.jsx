@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { CONTACT, whatsappLink } from "@/app/lib/siteConfig";
 import { isValidPhone } from "@/app/lib/validators";
+import { STATUS_META } from "@/app/lib/classStatus";
 
 const STATUS_ERROR_MESSAGES = {
   invalid_phone: "That phone number doesn't look right — please re-check it.",
@@ -19,6 +20,12 @@ function statusErrorMessageFor(code) {
 function formatDate(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function formatDateOnly(dateStr) {
+  if (!dateStr) return "—";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function daysAgoLabel(iso) {
@@ -143,7 +150,23 @@ export default function StatusCheck() {
                     <StatusBadge status={result.lastPayment.status} />
                   </div>
                 </div>
-                <p className="amount-note">For your exact next class or payment date, message Ravi directly — this page doesn&apos;t track class attendance.</p>
+
+                {result.recentSessions?.length > 0 && (
+                  <div className="summary" style={{ marginTop: 10 }}>
+                    <p className="cal-detail-label">Recent Classes</p>
+                    {result.recentSessions.slice(0, 5).map((s, i) => {
+                      const meta = STATUS_META[s.status] || { label: s.status, badge: "badge-type" };
+                      return (
+                        <div className="summary-row" key={i}>
+                          <span>{formatDateOnly(s.date)}</span>
+                          <span className={"badge " + meta.badge}>{meta.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="amount-note">For your exact next class time or any schedule changes, message Ravi directly.</p>
                 <a className="wa-btn" href={whatsappLink("Hi Ravi, checking in about my training schedule.")} target="_blank" rel="noopener">📲 Message Ravi on WhatsApp</a>
               </motion.div>
             )}

@@ -86,20 +86,24 @@ export default function ClientsView({ rows, onReload }) {
         </div>
         <button className="btn btn-ghost" type="button" onClick={() => exportClientsCsv(rows)}>Export CSV</button>
       </div>
+      <p className="renewals-note">Every client who has ever submitted, with everything they gave you — no need to dig through email or WhatsApp.</p>
       <div className="table-wrap">
         <table className="payments-table">
           <thead>
-            <tr><th>Client</th><th>Age</th><th>Height</th><th>Weight</th><th>Diet</th><th>Payments</th><th>T&amp;C Agreed</th></tr>
+            <tr><th>Client</th><th>Details</th><th>Payments</th><th>T&amp;C Agreed</th></tr>
           </thead>
           <tbody>
             {clients.length === 0 && (
-              <tr><td colSpan={7} className="loading-cell">No matching clients.</td></tr>
+              <tr><td colSpan={4} className="loading-cell">No matching clients.</td></tr>
             )}
             {clients.map((c) => {
               const isOpen = expandedId === c.id;
               const history = rows
                 .filter((r) => r.clients && r.clients.id === c.id)
                 .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+              const details = [c.age != null ? c.age + " yrs" : null, c.height_cm != null ? c.height_cm + " cm" : null, c.weight_kg != null ? c.weight_kg + " kg" : null, c.diet]
+                .filter(Boolean)
+                .join(" · ") || "—";
               return (
                 <Fragment key={c.id}>
                   <tr className="client-row" onClick={() => setExpandedId(isOpen ? null : c.id)}>
@@ -110,27 +114,26 @@ export default function ClientsView({ rows, onReload }) {
                       <div className="cell-name">{c.name || "—"}{c.archived && <span className="badge badge-type" style={{ marginLeft: 6 }}>Archived</span>}</div>
                       <div className="cell-sub">{c.phone || ""}</div>
                     </td>
-                    <td data-label="Age">{c.age != null ? c.age + " yrs" : "—"}</td>
-                    <td data-label="Height">{c.height_cm != null ? c.height_cm + " cm" : "—"}</td>
-                    <td data-label="Weight">{c.weight_kg != null ? c.weight_kg + " kg" : "—"}</td>
-                    <td data-label="Diet">{c.diet || "—"}</td>
+                    <td className="cell-sub" data-label="Details">{details}</td>
                     <td data-label="Payments">{c.paymentCount}</td>
                     <td data-label="T&C Agreed">
-                      {c.tcAgreedAt ? formatDate(c.tcAgreedAt) : "—"}
-                      <button className="row-btn edit-client-btn" type="button" onClick={(e) => { e.stopPropagation(); setEditingClient(c); }}>Edit</button>
-                      {!c.archived && (
-                        <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); setLogClient(c); }}>Log renewal</button>
-                      )}
-                      {c.archived ? (
-                        <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); askUnarchive(c); }}>Unarchive</button>
-                      ) : (
-                        <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); askArchive(c); }}>Archive</button>
-                      )}
+                      <div className="cell-sub" style={{ marginBottom: 8 }}>{c.tcAgreedAt ? formatDate(c.tcAgreedAt) : "—"}</div>
+                      <div className="actions-cell">
+                        <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); setEditingClient(c); }}>Edit</button>
+                        {!c.archived && (
+                          <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); setLogClient(c); }}>Log renewal</button>
+                        )}
+                        {c.archived ? (
+                          <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); askUnarchive(c); }}>Unarchive</button>
+                        ) : (
+                          <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); askArchive(c); }}>Archive</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   {isOpen && (
                     <tr className="client-history-row">
-                      <td colSpan={7}>
+                      <td colSpan={4}>
                         <table className="payments-table history-table">
                           <thead><tr><th>Submitted</th><th>Type</th><th>Status</th></tr></thead>
                           <tbody>

@@ -40,5 +40,6 @@ export async function GET(req) {
       submittedAt: last.submitted_at,
       confirmedAt: last.confirmed_at,
     },
+    recentSessions: (record.sessions || []).map((s) => ({ date: s.class_date, status: s.status })),
   });
 }

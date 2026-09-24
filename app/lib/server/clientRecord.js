@@ -30,10 +30,25 @@ export async function findClientByPhone(phone, serviceKey) {
   const payments = await paymentsRes.json();
   const agreedPayments = payments.filter((p) => p.tc_agreed_at);
 
+  let sessions = [];
+  try {
+    const sessionsRes = await fetch(
+      SUPABASE_URL + "/rest/v1/class_sessions?client_id=eq." + encodeURIComponent(client.id) +
+        "&select=id,class_date,status&order=class_date.desc&limit=10",
+      { headers }
+    );
+    if (sessionsRes.ok) {
+      sessions = await sessionsRes.json();
+    }
+  } catch {
+    sessions = [];
+  }
+
   return {
     id: client.id,
     name: client.name,
     payments,
     agreedPayments,
+    sessions,
   };
 }

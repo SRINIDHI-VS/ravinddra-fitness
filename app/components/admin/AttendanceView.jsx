@@ -5,17 +5,12 @@ import { supabase } from "@/app/lib/supabaseClient";
 import { dedupeClients } from "@/app/lib/clients";
 import { exportSessionsCsv } from "./csv";
 import LogSessionModal from "./LogSessionModal";
+import BulkLogSessionModal from "./BulkLogSessionModal";
 import ConfirmDialog from "./ConfirmDialog";
 import AttendanceCalendar from "./AttendanceCalendar";
+import { STATUS_META } from "@/app/lib/classStatus";
 
-export const STATUS_META = {
-  completed: { label: "Completed", badge: "badge-confirmed" },
-  makeup: { label: "Makeup", badge: "badge-ok" },
-  cancelled_notice: { label: "Cancelled — notice given", badge: "badge-pending" },
-  cancelled_trainer: { label: "Cancelled by trainer", badge: "badge-pending" },
-  cancelled_no_notice: { label: "Cancelled — no notice", badge: "badge-type" },
-  no_show: { label: "No-show", badge: "badge-rejected" },
-};
+export { STATUS_META };
 
 function formatDateOnly(dateStr) {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -27,6 +22,7 @@ export default function AttendanceView({ rows, paymentRows, onReload }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [showLogModal, setShowLogModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [logInitialDate, setLogInitialDate] = useState(null);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -81,24 +77,26 @@ export default function AttendanceView({ rows, paymentRows, onReload }) {
     <div>
       <div className="toolbar">
         <div className="filter-tabs">
-          <button className={"filter-tab" + (view === "table" ? " active" : "")} onClick={() => setView("table")}>Table</button>
-          <button className={"filter-tab" + (view === "calendar" ? " active" : "")} onClick={() => setView("calendar")}>Calendar</button>
+          <button className={"filter-tab" + (view === "table" ? " active" : "")} onClick={() => setView("table")}>📋 Table</button>
+          <button className={"filter-tab" + (view === "calendar" ? " active" : "")} onClick={() => setView("calendar")}>📅 Calendar</button>
         </div>
-        {view === "table" && (
-          <>
-            <input type="text" className="search-input" placeholder="Search name or phone…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <div className="filter-tabs">
-              {["all", "completed", "cancelled", "no_show", "makeup"].map((f) => (
-                <button key={f} className={"filter-tab" + (filter === f ? " active" : "")} onClick={() => setFilter(f)}>
-                  {f === "no_show" ? "No-show" : f[0].toUpperCase() + f.slice(1)}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
         <button className="btn btn-ghost" type="button" onClick={() => exportSessionsCsv(rows)}>Export CSV</button>
+        <button className="btn btn-ghost" type="button" onClick={() => setShowBulkModal(true)}>Bulk Mark</button>
         <button className="btn btn-primary log-payment-btn" type="button" onClick={() => openLogModal(null)}>+ Log Session</button>
       </div>
+
+      {view === "table" && (
+        <div className="toolbar" style={{ marginTop: -8 }}>
+          <input type="text" className="search-input" placeholder="Search name or phone…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="filter-tabs">
+            {["all", "completed", "cancelled", "no_show", "makeup"].map((f) => (
+              <button key={f} className={"filter-tab" + (filter === f ? " active" : "")} onClick={() => setFilter(f)}>
+                {f === "no_show" ? "No-show" : f[0].toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {view === "table" && (
         <div className="table-wrap">
@@ -145,6 +143,14 @@ export default function AttendanceView({ rows, paymentRows, onReload }) {
           initialClient={null}
           initialDate={logInitialDate}
           onClose={() => setShowLogModal(false)}
+          onLogged={onReload}
+        />
+      )}
+
+      {showBulkModal && (
+        <BulkLogSessionModal
+          clients={clients}
+          onClose={() => setShowBulkModal(false)}
           onLogged={onReload}
         />
       )}

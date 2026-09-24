@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/app/lib/supabaseClient";
 import { CONTACT, waLinkTo } from "@/app/lib/siteConfig";
 import { computeRenewals } from "@/app/lib/renewals";
 
@@ -8,6 +9,13 @@ function formatDate(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) +
     " · " + d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
+
+function timeAgoLabel(iso) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 60 * 60 * 1000));
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  return days + " days ago";
 }
 
 function statusLabel(row) {
@@ -29,9 +37,14 @@ function reminderMessage(row) {
   return `Hi ${firstName}, this is Ravi — heads up, your next payment is due in ${row.daysUntil} ${row.daysUntil === 1 ? "day" : "days"}. You can pay via UPI (${CONTACT.upiId}) whenever convenient.`;
 }
 
-export default function RenewalsView({ rows }) {
+export default function RenewalsView({ rows, onReload }) {
   const [search, setSearch] = useState("");
   const renewals = computeRenewals(rows);
+
+  async function markReminded(clientId) {
+    await supabase.from("clients").update({ last_reminded_at: new Date().toISOString() }).eq("id", clientId);
+    onReload?.();
+  }
   const filtered = renewals.filter((r) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -64,10 +77,23 @@ export default function RenewalsView({ rows }) {
                   <td data-label="Last Payment">{formatDate(r.lastDate.toISOString())}</td>
                   <td data-label="Next Due (est.)">{formatDate(r.nextDue.toISOString())}</td>
                   <td data-label="Status">
-                    <span className={"badge " + badgeClass}>{statusLabel(r)}</span>
-                    {r.status !== "ok" && (
-                      <a className="row-btn" href={waLinkTo(r.phone, reminderMessage(r))} target="_blank" rel="noopener">Remind</a>
-                    )}
+                    <div className="status-cell">
+                      <span className={"badge " + badgeClass}>{statusLabel(r)}</span>
+                      {r.status !== "ok" && (
+                        <a
+                          className="row-btn"
+                          href={waLinkTo(r.phone, reminderMessage(r))}
+                          target="_blank"
+                          rel="noopener"
+                          onClick={() => markReminded(r.id)}
+                        >
+                          Remind
+                        </a>
+                      )}
+                      {r.lastRemindedAt && (
+                        <span className="cell-sub">Reminded {timeAgoLabel(r.lastRemindedAt)}</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

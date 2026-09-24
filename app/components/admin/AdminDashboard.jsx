@@ -8,6 +8,7 @@ import ClientsView from "./ClientsView";
 import RenewalsView from "./RenewalsView";
 import AttendanceView from "./AttendanceView";
 import { ToastProvider } from "./Toast";
+import { computeRenewals } from "@/app/lib/renewals";
 
 function computeStats(rows) {
   const uniqueClients = new Set();
@@ -47,7 +48,7 @@ export default function AdminDashboard() {
     setLoadingRows(true);
     supabase
       .from("payments")
-      .select("id, client_type, status, screenshot_path, submitted_at, confirmed_at, tc_agreed_at, amount, transaction_ref, rejection_reason, source, clients(id, name, phone, age, height_cm, weight_kg, diet, archived, archived_at)")
+      .select("id, client_type, status, screenshot_path, submitted_at, confirmed_at, tc_agreed_at, amount, transaction_ref, rejection_reason, source, clients(id, name, phone, age, height_cm, weight_kg, diet, archived, archived_at, last_reminded_at)")
       .order("submitted_at", { ascending: false })
       .then(({ data, error }) => {
         setLoadingRows(false);
@@ -88,6 +89,7 @@ export default function AdminDashboard() {
   if (!session) return <LoginScreen />;
 
   const stats = computeStats(rows);
+  const renewalsDue = computeRenewals(rows).filter((r) => r.status !== "ok").length;
 
   return (
     <ToastProvider>
@@ -112,7 +114,10 @@ export default function AdminDashboard() {
 
       <div className="view-tabs">
         {[["payments", "Payments"], ["clients", "Clients"], ["renewals", "Renewals"], ["attendance", "Attendance"]].map(([key, label]) => (
-          <button key={key} className={"view-tab" + (view === key ? " active" : "")} onClick={() => setView(key)}>{label}</button>
+          <button key={key} className={"view-tab" + (view === key ? " active" : "")} onClick={() => setView(key)}>
+            {label}
+            {key === "renewals" && renewalsDue > 0 && <span className="tab-badge">{renewalsDue}</span>}
+          </button>
         ))}
       </div>
 
@@ -120,7 +125,7 @@ export default function AdminDashboard() {
       {!loadingRows && loadError && <div className="table-wrap"><table className="payments-table"><tbody><tr><td className="loading-cell">Couldn&apos;t load data — refresh to retry.</td></tr></tbody></table></div>}
       {!loadingRows && !loadError && view === "payments" && <PaymentsView rows={rows} onReload={loadPayments} />}
       {!loadingRows && !loadError && view === "clients" && <ClientsView rows={rows} onReload={loadPayments} />}
-      {!loadingRows && !loadError && view === "renewals" && <RenewalsView rows={rows} />}
+      {!loadingRows && !loadError && view === "renewals" && <RenewalsView rows={rows} onReload={loadPayments} />}
       {!loadingRows && !loadError && view === "attendance" && !sessionsReady && (
         <div className="table-wrap"><table className="payments-table"><tbody><tr><td className="loading-cell">Loading…</td></tr></tbody></table></div>
       )}

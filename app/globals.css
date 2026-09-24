@@ -353,6 +353,7 @@ footer.foot br + a { display: inline-block; margin-top: 6px; }
 .view-tab { font: inherit; font-size: 13.5px; font-weight: 800; padding: 10px 4px; margin-bottom: -1px; border: none; border-bottom: 2.5px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; transition: color 0.15s; }
 .view-tab:hover { color: var(--text); }
 .view-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 5px; margin-left: 6px; border-radius: 999px; background: var(--gold); color: var(--gold-text); font-size: 10.5px; font-weight: 800; line-height: 1; }
 
 .renewals-note { font-size: 12.5px; color: var(--text-muted); margin: 0 0 14px; line-height: 1.5; }
 
@@ -445,6 +446,41 @@ footer.foot br + a { display: inline-block; margin-top: 6px; }
 .client-suggest-row:last-child { border-bottom: none; }
 .client-suggest-row:hover { background: color-mix(in srgb, var(--gold) 10%, transparent); }
 .client-suggest-new { width: 100%; margin-top: 6px; text-align: center; }
+
+.checklist-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; margin-bottom: 6px; }
+.checklist-count { font-size: 12px; font-weight: 700; color: var(--gold); }
+.client-checklist { max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-raised); }
+.chk-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+.chk-row:last-child { border-bottom: none; }
+.chk-row:hover { background: color-mix(in srgb, var(--gold) 8%, transparent); }
+.chk-row-meta { flex: 1 1 auto; min-width: 0; }
+.chk-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+}
+.chk-row input[type="checkbox"]:hover { border-color: var(--gold); }
+.chk-row input[type="checkbox"]:active { transform: scale(0.92); }
+.chk-row input[type="checkbox"]:checked { background: var(--gold); border-color: var(--gold); }
+.chk-row input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--gold-text);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
 
 @media (max-width: 620px) {
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
