@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import Rail from "./Rail";
-import GymDecor from "@/app/components/GymDecor";
 import { CONTACT, upiDeepLink, whatsappLink } from "@/app/lib/siteConfig";
 import {
   isValidName,
@@ -331,8 +330,7 @@ export default function EnrollForm() {
   }
 
   return (
-    <div className="app">
-      <GymDecor />
+    <div className={"app" + (stepKey === "phone" ? " app-landing" : "")}>
       <div className="brand">
         <div className="brand-id">
           <Image className="brand-photo" src="/ravi.jpg" alt="Ravi, personal trainer" width={96} height={94} />
@@ -343,6 +341,14 @@ export default function EnrollForm() {
         </div>
         <span className="brand-tag">Enrollment</span>
       </div>
+
+      {stepKey === "phone" && (
+        <div className="hero-panel">
+          <p className="hero-eyebrow">Personal Training</p>
+          <h1 className="display hero-headline">Real coaching.<br />Real results.</h1>
+          <p className="hero-sub">8+ years helping people get stronger, leaner, and more consistent — one training block at a time.</p>
+        </div>
+      )}
 
       <div className="stat-row">
         <div className="stat-chip"><strong>8+</strong> yrs experience</div>

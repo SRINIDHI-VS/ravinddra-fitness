@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { CONTACT, whatsappLink } from "@/app/lib/siteConfig";
-import GymDecor from "@/app/components/GymDecor";
 import { isValidPhone } from "@/app/lib/validators";
 
 const STATUS_ERROR_MESSAGES = {
@@ -75,7 +74,6 @@ export default function StatusCheck() {
 
   return (
     <div className="app">
-      <GymDecor />
       <div className="brand">
         <div className="brand-id">
           <Image className="brand-photo" src="/ravi.jpg" alt="Ravi, personal trainer" width={96} height={94} />
