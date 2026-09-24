@@ -7,6 +7,7 @@ import { dedupeClients } from "@/app/lib/clients";
 import { waLinkTo } from "@/app/lib/siteConfig";
 import { isValidAmount } from "@/app/lib/validators";
 import LogPaymentModal from "./LogPaymentModal";
+import EditPaymentModal from "./EditPaymentModal";
 import ConfirmDialog from "./ConfirmDialog";
 import PromptDialog from "./PromptDialog";
 import { useToast } from "./Toast";
@@ -43,18 +44,18 @@ async function viewProof(path, setBusyPath, showToast) {
 const DUPLICATE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 
 function findPossibleDuplicate(row, allRows) {
-  if (row.status !== "submitted") return null;
+  if (row.status !== "submitted" && row.status !== "confirmed") return null;
   const clientId = row.clients?.id;
   if (!clientId) return null;
-  const rowTime = new Date(row.submitted_at).getTime();
+  const rowTime = new Date(row.status === "confirmed" ? row.confirmed_at || row.submitted_at : row.submitted_at).getTime();
   return (
-    allRows.find(
-      (other) =>
-        other.id !== row.id &&
-        other.clients?.id === clientId &&
-        other.status === "confirmed" &&
-        Math.abs(new Date(other.submitted_at).getTime() - rowTime) <= DUPLICATE_WINDOW_MS
-    ) || null
+    allRows.find((other) => {
+      if (other.id === row.id) return false;
+      if (other.clients?.id !== clientId) return false;
+      if (other.status !== "confirmed") return false;
+      const otherTime = new Date(other.confirmed_at || other.submitted_at).getTime();
+      return Math.abs(otherTime - rowTime) <= DUPLICATE_WINDOW_MS;
+    }) || null
   );
 }
 
@@ -73,6 +74,10 @@ export default function PaymentsView({ rows, onReload }) {
   const [confirmRow, setConfirmRow] = useState(null);
   const [confirmAmountBusy, setConfirmAmountBusy] = useState(false);
   const [confirmAmountError, setConfirmAmountError] = useState(null);
+
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
+
+  const [editRow, setEditRow] = useState(null);
 
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -127,12 +132,31 @@ export default function PaymentsView({ rows, onReload }) {
   }
 
   function confirmPayment(row) {
+    const dup = findPossibleDuplicate(row, rows);
+    if (dup) {
+      setDuplicateWarning({ row, dup });
+      return;
+    }
+    proceedConfirm(row);
+  }
+
+  function proceedConfirm(row) {
     if (row.amount == null) {
       setConfirmRow(row);
       setConfirmAmountError(null);
       return;
     }
     setStatus(row.id, { status: "confirmed", confirmed_at: new Date().toISOString() });
+  }
+
+  function confirmDespiteDuplicate() {
+    const row = duplicateWarning.row;
+    setDuplicateWarning(null);
+    proceedConfirm(row);
+  }
+
+  function cancelDuplicateWarning() {
+    setDuplicateWarning(null);
   }
 
   function cancelConfirmAmount() {
@@ -246,7 +270,10 @@ export default function PaymentsView({ rows, onReload }) {
                       </>
                     )}
                     {r.status === "confirmed" && (
-                      <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Undo</button>
+                      <>
+                        <button className="row-btn edit-client-btn" disabled={busyId === r.id} onClick={() => setEditRow(r)}>Edit</button>
+                        <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Undo</button>
+                      </>
                     )}
                     {r.status === "rejected" && (
                       <>
@@ -322,6 +349,25 @@ export default function PaymentsView({ rows, onReload }) {
           error={deleteError}
           onConfirm={confirmDeleteManual}
           onCancel={cancelDeleteManual}
+        />
+      )}
+
+      {editRow && (
+        <EditPaymentModal
+          payment={editRow}
+          onClose={() => setEditRow(null)}
+          onSaved={onReload}
+        />
+      )}
+
+      {duplicateWarning && (
+        <ConfirmDialog
+          title="Possible duplicate payment"
+          message={`${duplicateWarning.row.clients?.name || "This client"} already has a confirmed payment on ${formatDate(duplicateWarning.dup.confirmed_at || duplicateWarning.dup.submitted_at)}. Confirm this one too?`}
+          confirmLabel="Confirm anyway"
+          danger={false}
+          onConfirm={confirmDespiteDuplicate}
+          onCancel={cancelDuplicateWarning}
         />
       )}
     </div>

@@ -2,37 +2,12 @@
 
 import { useState } from "react";
 import { CONTACT, waLinkTo } from "@/app/lib/siteConfig";
-
-const CYCLE_DAYS = 28;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+import { computeRenewals } from "@/app/lib/renewals";
 
 function formatDate(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) +
     " · " + d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-}
-
-function computeRenewals(rows) {
-  const byClient = {};
-  rows.forEach((r) => {
-    if (r.status !== "confirmed" || !r.confirmed_at) return;
-    const c = r.clients;
-    if (!c) return;
-    const existing = byClient[c.id];
-    if (!existing || new Date(r.confirmed_at) > new Date(existing.confirmed_at)) {
-      byClient[c.id] = { name: c.name, phone: c.phone, confirmed_at: r.confirmed_at };
-    }
-  });
-  const now = new Date();
-  const list = Object.values(byClient).map((entry) => {
-    const lastDate = new Date(entry.confirmed_at);
-    const nextDue = new Date(lastDate.getTime() + CYCLE_DAYS * MS_PER_DAY);
-    const daysUntil = Math.ceil((nextDue - now) / MS_PER_DAY);
-    const status = daysUntil < 0 ? "overdue" : daysUntil <= 3 ? "soon" : "ok";
-    return { name: entry.name, phone: entry.phone, lastDate, nextDue, daysUntil, status };
-  });
-  list.sort((a, b) => a.nextDue - b.nextDue);
-  return list;
 }
 
 function statusLabel(row) {

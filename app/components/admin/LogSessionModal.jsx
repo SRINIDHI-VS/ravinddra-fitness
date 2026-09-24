@@ -18,10 +18,10 @@ function toLocalDateValue(date) {
   return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
 }
 
-export default function LogSessionModal({ clients, initialClient, onClose, onLogged }) {
+export default function LogSessionModal({ clients, initialClient, initialDate, onClose, onLogged }) {
   const [query, setQuery] = useState(initialClient ? initialClient.name || initialClient.phone : "");
   const [selected, setSelected] = useState(initialClient || null);
-  const [date, setDate] = useState(() => toLocalDateValue(new Date()));
+  const [date, setDate] = useState(() => initialDate || toLocalDateValue(new Date()));
   const [status, setStatus] = useState("completed");
   const [notes, setNotes] = useState("");
   const [touched, setTouched] = useState(false);
