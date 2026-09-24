@@ -53,3 +53,25 @@ export function exportClientsCsv(rows) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+export function exportSessionsCsv(rows) {
+  const header = ["Date", "Client", "Phone", "Status", "Notes"];
+  const lines = [header.map(csvField).join(",")];
+  rows.forEach((r) => {
+    const c = r.clients || {};
+    lines.push(
+      [r.class_date, c.name, c.phone, r.status, r.notes]
+        .map(csvField)
+        .join(",")
+    );
+  });
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "ravi-fitness-attendance-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
