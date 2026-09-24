@@ -10,6 +10,7 @@ import { STATUS_META } from "@/app/lib/classStatus";
 
 const STATUS_ERROR_MESSAGES = {
   invalid_phone: "That phone number doesn't look right — please re-check it.",
+  rate_limited: "Too many attempts in a short time. Please wait a minute and try again.",
   server_not_configured: "Something's wrong on our end — please message Ravi directly on WhatsApp instead.",
 };
 

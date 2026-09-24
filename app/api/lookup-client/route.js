@@ -1,11 +1,17 @@
 import { isValidPhone } from "@/app/lib/validators";
 import { findClientByPhone } from "@/app/lib/server/clientRecord";
+import { checkLookupRateLimit } from "@/app/lib/server/rateLimit";
 
 function json(status, body) {
   return Response.json(body, { status });
 }
 
 export async function GET(req) {
+  const { allowed } = await checkLookupRateLimit(req);
+  if (!allowed) {
+    return json(429, { code: "rate_limited" });
+  }
+
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
     console.error("SUPABASE_SERVICE_ROLE_KEY is not set in this project's environment variables.");

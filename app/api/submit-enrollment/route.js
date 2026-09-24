@@ -7,6 +7,7 @@ import {
   MAX_FILE_BYTES,
   ALLOWED_FILE_TYPES,
 } from "@/app/lib/validators";
+import { checkSubmitRateLimit } from "@/app/lib/server/rateLimit";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -33,6 +34,11 @@ function strOrNull(v) {
 }
 
 export async function POST(req) {
+  const { allowed } = await checkSubmitRateLimit(req);
+  if (!allowed) {
+    return json(429, { code: "rate_limited" });
+  }
+
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
     console.error("SUPABASE_SERVICE_ROLE_KEY is not set in this project's environment variables.");
