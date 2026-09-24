@@ -12,6 +12,8 @@ export function dedupeClients(rows) {
         height_cm: c.height_cm,
         weight_kg: c.weight_kg,
         diet: c.diet,
+        archived: !!c.archived,
+        archivedAt: c.archived_at || null,
         paymentCount: 0,
         tcAgreedAt: null,
       };

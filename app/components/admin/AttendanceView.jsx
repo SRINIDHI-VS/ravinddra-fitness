@@ -32,7 +32,7 @@ export default function AttendanceView({ rows, paymentRows, onReload }) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
 
-  const clients = dedupeClients(paymentRows);
+  const clients = dedupeClients(paymentRows).filter((c) => !c.archived);
 
   const filtered = rows
     .filter((r) => {

@@ -30,7 +30,7 @@ export function exportPaymentsCsv(rows) {
 
 export function exportClientsCsv(rows) {
   const clients = dedupeClients(rows);
-  const header = ["Name", "Phone", "Age", "Height (cm)", "Weight (kg)", "Diet", "Total Payments", "T&C Agreed", "Last Payment Date", "Last Payment Status"];
+  const header = ["Name", "Phone", "Age", "Height (cm)", "Weight (kg)", "Diet", "Total Payments", "T&C Agreed", "Last Payment Date", "Last Payment Status", "Archived"];
   const lines = [header.map(csvField).join(",")];
   clients.forEach((c) => {
     const history = rows
@@ -38,7 +38,7 @@ export function exportClientsCsv(rows) {
       .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
     const last = history[0];
     lines.push(
-      [c.name, c.phone, c.age, c.height_cm, c.weight_kg, c.diet, c.paymentCount, c.tcAgreedAt, last ? last.submitted_at : "", last ? last.status : ""]
+      [c.name, c.phone, c.age, c.height_cm, c.weight_kg, c.diet, c.paymentCount, c.tcAgreedAt, last ? last.submitted_at : "", last ? last.status : "", c.archived ? "Yes" : "No"]
         .map(csvField)
         .join(",")
     );

@@ -296,7 +296,7 @@ export default function PaymentsView({ rows, onReload }) {
 
       {showLogModal && (
         <LogPaymentModal
-          clients={dedupeClients(rows)}
+          clients={dedupeClients(rows).filter((c) => !c.archived)}
           rows={rows}
           initialClient={null}
           onClose={() => setShowLogModal(false)}

@@ -1,10 +1,12 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { supabase } from "@/app/lib/supabaseClient";
 import { dedupeClients } from "@/app/lib/clients";
 import { exportClientsCsv } from "./csv";
 import LogPaymentModal from "./LogPaymentModal";
 import EditClientModal from "./EditClientModal";
+import ConfirmDialog from "./ConfirmDialog";
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -16,9 +18,53 @@ export default function ClientsView({ rows, onReload }) {
   const [expandedId, setExpandedId] = useState(null);
   const [logClient, setLogClient] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
-  const clients = dedupeClients(rows);
+  const [clientFilter, setClientFilter] = useState("active");
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveError, setArchiveError] = useState(null);
 
-  if (!clients.length) {
+  const allClients = dedupeClients(rows);
+  const clients = allClients.filter((c) => {
+    if (clientFilter === "active") return !c.archived;
+    if (clientFilter === "archived") return c.archived;
+    return true;
+  });
+  const logPaymentClients = allClients.filter((c) => !c.archived);
+
+  function askArchive(client) {
+    setArchiveTarget({ client, archiving: true });
+    setArchiveError(null);
+  }
+
+  function askUnarchive(client) {
+    setArchiveTarget({ client, archiving: false });
+    setArchiveError(null);
+  }
+
+  function cancelArchive() {
+    if (archiveBusy) return;
+    setArchiveTarget(null);
+    setArchiveError(null);
+  }
+
+  async function confirmArchiveToggle() {
+    const { client, archiving } = archiveTarget;
+    setArchiveBusy(true);
+    setArchiveError(null);
+    const { error } = await supabase
+      .from("clients")
+      .update({ archived: archiving, archived_at: archiving ? new Date().toISOString() : null })
+      .eq("id", client.id);
+    setArchiveBusy(false);
+    if (error) {
+      setArchiveError("Could not update. Try again.");
+      return;
+    }
+    setArchiveTarget(null);
+    onReload();
+  }
+
+  if (!allClients.length) {
     return (
       <div className="table-wrap">
         <table className="payments-table">
@@ -31,7 +77,13 @@ export default function ClientsView({ rows, onReload }) {
   return (
     <>
       <div className="toolbar">
-        <p className="renewals-note" style={{ margin: 0 }}>Every client who has ever submitted, with everything they gave you — no need to dig through email or WhatsApp.</p>
+        <div className="filter-tabs">
+          {["active", "archived", "all"].map((f) => (
+            <button key={f} className={"filter-tab" + (clientFilter === f ? " active" : "")} onClick={() => setClientFilter(f)}>
+              {f[0].toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
         <button className="btn btn-ghost" type="button" onClick={() => exportClientsCsv(rows)}>Export CSV</button>
       </div>
       <div className="table-wrap">
@@ -40,6 +92,9 @@ export default function ClientsView({ rows, onReload }) {
             <tr><th>Client</th><th>Age</th><th>Height</th><th>Weight</th><th>Diet</th><th>Payments</th><th>T&amp;C Agreed</th></tr>
           </thead>
           <tbody>
+            {clients.length === 0 && (
+              <tr><td colSpan={7} className="loading-cell">No matching clients.</td></tr>
+            )}
             {clients.map((c) => {
               const isOpen = expandedId === c.id;
               const history = rows
@@ -52,7 +107,7 @@ export default function ClientsView({ rows, onReload }) {
                       <button className="expand-btn" type="button" aria-expanded={isOpen} onClick={(e) => { e.stopPropagation(); setExpandedId(isOpen ? null : c.id); }}>
                         {isOpen ? "▾" : "▶"}
                       </button>
-                      <div className="cell-name">{c.name || "—"}</div>
+                      <div className="cell-name">{c.name || "—"}{c.archived && <span className="badge badge-type" style={{ marginLeft: 6 }}>Archived</span>}</div>
                       <div className="cell-sub">{c.phone || ""}</div>
                     </td>
                     <td data-label="Age">{c.age != null ? c.age + " yrs" : "—"}</td>
@@ -63,7 +118,14 @@ export default function ClientsView({ rows, onReload }) {
                     <td data-label="T&C Agreed">
                       {c.tcAgreedAt ? formatDate(c.tcAgreedAt) : "—"}
                       <button className="row-btn edit-client-btn" type="button" onClick={(e) => { e.stopPropagation(); setEditingClient(c); }}>Edit</button>
-                      <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); setLogClient(c); }}>Log renewal</button>
+                      {!c.archived && (
+                        <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); setLogClient(c); }}>Log renewal</button>
+                      )}
+                      {c.archived ? (
+                        <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); askUnarchive(c); }}>Unarchive</button>
+                      ) : (
+                        <button className="row-btn" type="button" onClick={(e) => { e.stopPropagation(); askArchive(c); }}>Archive</button>
+                      )}
                     </td>
                   </tr>
                   {isOpen && (
@@ -93,7 +155,7 @@ export default function ClientsView({ rows, onReload }) {
 
       {logClient && (
         <LogPaymentModal
-          clients={clients}
+          clients={logPaymentClients}
           rows={rows}
           initialClient={logClient}
           onClose={() => setLogClient(null)}
@@ -106,6 +168,23 @@ export default function ClientsView({ rows, onReload }) {
           client={editingClient}
           onClose={() => setEditingClient(null)}
           onSaved={onReload}
+        />
+      )}
+
+      {archiveTarget && (
+        <ConfirmDialog
+          title={archiveTarget.archiving ? "Archive this client?" : "Unarchive this client?"}
+          message={
+            archiveTarget.archiving
+              ? `${archiveTarget.client.name || "This client"} will be hidden from your active list and from client search when logging new payments or sessions. Their payment and attendance history stays exactly as it is, and you can unarchive them anytime.`
+              : `${archiveTarget.client.name || "This client"} will reappear in your active client list and become searchable again when logging payments or sessions.`
+          }
+          confirmLabel={archiveTarget.archiving ? "Archive" : "Unarchive"}
+          danger={false}
+          busy={archiveBusy}
+          error={archiveError}
+          onConfirm={confirmArchiveToggle}
+          onCancel={cancelArchive}
         />
       )}
     </>
