@@ -512,7 +512,7 @@ export default function EnrollForm() {
                   <div className="warn-box">
                     This number is on file as <strong>{existingName}</strong>, not &quot;{nameEx.trim()}&quot;. Are you the same person fixing a typo, or does someone else use this phone too?
                   </div>
-                  <div className="actions" style={{ flexDirection: "column" }}>
+                  <div className="actions">
                     <button type="button" className="btn btn-primary" onClick={() => { setShowNameConflict(false); goTo(posInPath + 1); }}>
                       That&apos;s me — just fixing a typo →
                     </button>

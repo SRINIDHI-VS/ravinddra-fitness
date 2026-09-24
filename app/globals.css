@@ -276,8 +276,8 @@ a { color: inherit; text-decoration: none; }
 
 .not-found-icon { font-size: 30px; text-align: center; margin-bottom: 8px; opacity: 0.55; }
 
-.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-.btn { font: inherit; font-weight: 800; font-size: 14px; letter-spacing: 0.01em; padding: 13px 18px; border-radius: 12px; border: none; cursor: pointer; white-space: nowrap; transition: transform 0.16s cubic-bezier(.2,.8,.2,1), box-shadow 0.16s, filter 0.12s, opacity 0.15s; flex: 1 1 160px; }
+.actions { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.btn { font: inherit; font-weight: 800; font-size: 14.5px; letter-spacing: 0.01em; padding: 14px 18px; border-radius: 12px; border: none; cursor: pointer; white-space: nowrap; transition: transform 0.16s cubic-bezier(.2,.8,.2,1), box-shadow 0.16s, filter 0.12s, opacity 0.15s; }
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: var(--gold-text); box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--gold) 60%, transparent); }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 28px -12px color-mix(in srgb, var(--gold) 65%, transparent); filter: brightness(1.04); }
@@ -285,7 +285,7 @@ a { color: inherit; text-decoration: none; }
 
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid color-mix(in srgb, var(--gold-text) 30%, transparent); border-top-color: var(--gold-text); border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: -2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.btn-ghost { background: var(--surface-raised); color: var(--text); border: 1px solid var(--border); flex: 0 1 auto; padding-inline: 18px; transition: border-color 0.15s, color 0.15s, transform 0.16s cubic-bezier(.2,.8,.2,1); }
+.btn-ghost { background: var(--surface-raised); color: var(--text); border: 1px solid var(--border); padding-inline: 18px; transition: border-color 0.15s, color 0.15s, transform 0.16s cubic-bezier(.2,.8,.2,1); }
 .btn-ghost:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-1px); }
 
 .btn-danger { background: var(--danger); color: #fff; box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--danger) 55%, transparent); }
