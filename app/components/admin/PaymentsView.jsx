@@ -223,12 +223,12 @@ export default function PaymentsView({ rows, onReload }) {
         <table className="payments-table">
           <thead>
             <tr>
-              <th>Submitted</th><th>Client</th><th>Type</th><th>Details</th><th>Amount</th><th>Txn Ref</th><th>Proof</th><th>Status</th>
+              <th>Submitted</th><th>Client</th><th>Type</th><th>Details</th><th>Amount</th><th>Txn Ref</th><th>Proof</th><th>Status</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={8} className="loading-cell">No matching records.</td></tr>
+              <tr><td colSpan={9} className="loading-cell">No matching records.</td></tr>
             )}
             {filtered.map((r) => {
               const c = r.clients || {};
@@ -257,35 +257,41 @@ export default function PaymentsView({ rows, onReload }) {
                     )}
                   </td>
                   <td data-label="Status">
-                    <StatusBadge row={r} />
-                    {dup && (
-                      <span className="badge badge-soon" title={`Possibly a duplicate — this client already has a confirmed payment on ${formatDate(dup.confirmed_at || dup.submitted_at)}`}>
-                        ⚠ Possible dup
-                      </span>
-                    )}
-                    {r.status === "submitted" && (
-                      <>
-                        <button className="row-btn confirm-btn" disabled={busyId === r.id} onClick={() => confirmPayment(r)}>Mark confirmed</button>
-                        <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => openReject(r.id)}>Reject</button>
-                      </>
-                    )}
-                    {r.status === "confirmed" && (
-                      <>
-                        <button className="row-btn edit-client-btn" disabled={busyId === r.id} onClick={() => setEditRow(r)}>Edit</button>
-                        <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Undo</button>
-                      </>
-                    )}
-                    {r.status === "rejected" && (
-                      <>
-                        <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Restore</button>
-                        {c.phone && (
-                          <a className="row-btn" href={waLinkTo(c.phone, rejectionMessage(r))} target="_blank" rel="noopener">Notify</a>
-                        )}
-                      </>
-                    )}
-                    {r.source === "admin_manual" && (
-                      <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => askDeleteManual(r.id)}>Delete</button>
-                    )}
+                    <div className="status-cell">
+                      <StatusBadge row={r} />
+                      {dup && (
+                        <span className="badge badge-soon" title={`Possibly a duplicate — this client already has a confirmed payment on ${formatDate(dup.confirmed_at || dup.submitted_at)}`}>
+                          ⚠ Possible dup
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td data-label="Actions">
+                    <div className="actions-cell">
+                      {r.status === "submitted" && (
+                        <>
+                          <button className="row-btn confirm-btn" disabled={busyId === r.id} onClick={() => confirmPayment(r)}>Mark confirmed</button>
+                          <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => openReject(r.id)}>Reject</button>
+                        </>
+                      )}
+                      {r.status === "confirmed" && (
+                        <>
+                          <button className="row-btn edit-client-btn" disabled={busyId === r.id} onClick={() => setEditRow(r)}>Edit</button>
+                          <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Undo</button>
+                        </>
+                      )}
+                      {r.status === "rejected" && (
+                        <>
+                          <button className="row-btn undo-btn" disabled={busyId === r.id} onClick={() => setStatus(r.id, { status: "submitted", confirmed_at: null, rejection_reason: null })}>Restore</button>
+                          {c.phone && (
+                            <a className="row-btn" href={waLinkTo(c.phone, rejectionMessage(r))} target="_blank" rel="noopener">Notify</a>
+                          )}
+                        </>
+                      )}
+                      {r.source === "admin_manual" && (
+                        <button className="row-btn reject-btn" disabled={busyId === r.id} onClick={() => askDeleteManual(r.id)}>Delete</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
