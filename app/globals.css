@@ -236,7 +236,7 @@ footer.foot br + a { display: inline-block; margin-top: 6px; }
 .admin-shell { width: 100%; max-width: 1080px; }
 .admin-title { font-size: 22px; margin: 0 0 4px; }
 
-.login-wrap { display: flex; justify-content: center; padding-top: 8vh; }
+.login-wrap { display: flex; justify-content: center; align-items: flex-start; padding-top: 8vh; }
 .login-card { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px 24px; box-shadow: 0 20px 50px var(--shadow); opacity: 0; animation: rise 0.6s cubic-bezier(.2,.8,.2,1) 0.05s forwards; }
 .login-card .submit-error-msg { margin-top: -4px; }
 
