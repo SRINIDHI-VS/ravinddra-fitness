@@ -559,17 +559,30 @@ export default function EnrollForm() {
                   </ul>
                 </div>
                 <h4>Program structure</h4>
-                <p>Training runs in 4-week blocks, counted strictly week-wise — not by calendar month or fixed start/end dates.</p>
+                <ul>
+                  <li>Training runs in 4-week blocks.</li>
+                  <li>Counted strictly week-wise — not by calendar month or fixed start/end dates.</li>
+                </ul>
                 <h4>Class days</h4>
-                <p>Classes are held Monday to Friday only. No classes on Saturday or Sunday.</p>
+                <ul>
+                  <li>Classes are held Monday to Friday only.</li>
+                  <li>No classes on Saturday or Sunday.</li>
+                </ul>
                 <h4>Payment schedule</h4>
-                <p>Payment for the next 4-week block is due at the start of Week 5 of the current block.</p>
+                <ul>
+                  <li>Payment for the next 4-week block is due at the start of Week 5 of the current block.</li>
+                </ul>
                 <h4>Refund policy</h4>
                 <div className="tc-critical">
-                  <p>No refunds are issued under any circumstances.</p>
+                  <ul>
+                    <li>No refunds are issued under any circumstances.</li>
+                  </ul>
                 </div>
                 <h4>If a class is cancelled by the trainer</h4>
-                <p>A makeup class will be scheduled to cover it. Payment still continues on the normal week-wise schedule regardless of makeup classes.</p>
+                <ul>
+                  <li>A makeup class will be scheduled to cover it.</li>
+                  <li>Payment still continues on the normal week-wise schedule regardless of makeup classes.</li>
+                </ul>
                 <h4>If a class is cancelled by the client</h4>
                 <div className="tc-critical">
                   <ul>
@@ -579,7 +592,9 @@ export default function EnrollForm() {
                   </ul>
                 </div>
                 <h4>Payment confirmation</h4>
-                <p>After paying, you must share a screenshot of the payment as confirmation — the next steps in this form.</p>
+                <ul>
+                  <li>After paying, you must share a screenshot of the payment as confirmation — the next steps in this form.</li>
+                </ul>
               </div>
               <div className="scroll-progress-track" aria-hidden="true">
                 <motion.div className="scroll-progress-fill" animate={{ width: scrollProgress + "%" }} transition={{ duration: 0.15 }} />
