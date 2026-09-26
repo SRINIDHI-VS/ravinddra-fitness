@@ -4,6 +4,7 @@ import {
   isInRange,
   isValidDiet,
   isValidClientType,
+  isValidAmount,
   MAX_FILE_BYTES,
   ALLOWED_FILE_TYPES,
 } from "@/app/lib/validators";
@@ -65,6 +66,10 @@ export async function POST(req) {
   const name = (params.get("name") || "").trim();
   if (!isValidName(name)) {
     return json(400, { code: "invalid_name" });
+  }
+  const amountRaw = (params.get("amount") || "").trim();
+  if (amountRaw === "" || !isValidAmount(amountRaw)) {
+    return json(400, { code: "invalid_amount" });
   }
   if (clientType === "New") {
     const diet = params.get("diet") || "";

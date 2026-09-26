@@ -11,6 +11,7 @@ import {
   isValidPhone,
   isInRange,
   isValidDiet,
+  isValidAmount,
   MAX_FILE_BYTES,
   ALLOWED_FILE_TYPES,
 } from "@/app/lib/validators";
@@ -32,6 +33,7 @@ const ERROR_MESSAGES = {
   invalid_height: "Height must be between 100 and 230 cm — please go back and re-check it.",
   invalid_weight: "Weight must be between 25 and 250 kg — please go back and re-check it.",
   invalid_diet: "Please go back and choose Veg or Non-veg.",
+  invalid_amount: "Please go back and enter the amount you paid.",
   terms_not_agreed: "Please go back and accept the terms & conditions first.",
   invalid_file_type: "Please upload a JPG, PNG or WebP image.",
   invalid_file_size: "That file is too large — please upload an image under 5 MB.",
@@ -85,8 +87,11 @@ export default function EnrollForm() {
   const [unlocked, setUnlocked] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [tcAgreedAt, setTcAgreedAt] = useState("");
+  const [agreedName, setAgreedName] = useState("");
+  const [agreedPhone, setAgreedPhone] = useState("");
   const [tcBox, setTcBox] = useState(null);
 
+  const [amount, setAmount] = useState("");
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [fileError, setFileError] = useState(false);
@@ -183,6 +188,9 @@ export default function EnrollForm() {
         setAgreed(draft.agreed ?? false);
         setUnlocked(draft.unlocked ?? false);
         setTcAgreedAt(draft.tcAgreedAt ?? "");
+        setAgreedName(draft.agreedName ?? "");
+        setAgreedPhone(draft.agreedPhone ?? "");
+        setAmount(draft.amount ?? "");
         setShowRestoredNote(true);
       }
       setDraftReady(true);
@@ -199,18 +207,36 @@ export default function EnrollForm() {
       clientType, posInPath,
       name, phone, age, height, weight, diet,
       nameEx, phoneEx, existingName, existingPaymentCount, existingLastAmount,
-      agreed, unlocked, tcAgreedAt,
+      agreed, unlocked, tcAgreedAt, agreedName, agreedPhone, amount,
     });
   }, [
     draftReady, clientType, posInPath,
     name, phone, age, height, weight, diet,
     nameEx, phoneEx, existingName, existingPaymentCount, existingLastAmount,
-    agreed, unlocked, tcAgreedAt,
+    agreed, unlocked, tcAgreedAt, agreedName, agreedPhone, amount,
   ]);
 
   useEffect(() => {
     if (done) clearDraft();
   }, [done]);
+
+  function handleNameChange(v) {
+    setName(v);
+    if (agreed && v !== agreedName) {
+      setAgreed(false);
+      setUnlocked(false);
+      setTcAgreedAt("");
+    }
+  }
+
+  function handlePhoneChange(v) {
+    setPhone(v);
+    if (agreed && v !== agreedPhone) {
+      setAgreed(false);
+      setUnlocked(false);
+      setTcAgreedAt("");
+    }
+  }
 
   function validateDetails(showErrors) {
     const nameOk = isValidName(name);
@@ -234,8 +260,17 @@ export default function EnrollForm() {
     return nameOk && phoneOk;
   }
 
+  function validatePayment(showErrors) {
+    const amountOk = amount !== "" && isValidAmount(amount);
+    if (showErrors) {
+      setTouched((t) => ({ ...t, amount: true }));
+    }
+    return amountOk;
+  }
+
   function next() {
     if (stepKey === "details" && !validateDetails(true)) return;
+    if (stepKey === "payment" && !validatePayment(true)) return;
     if (stepKey === "identify") {
       if (!validateIdentify(true)) return;
       const nameChanged = existingName && nameEx.trim().toLowerCase() !== existingName.trim().toLowerCase();
@@ -250,7 +285,11 @@ export default function EnrollForm() {
   function handleAgreeChange(e) {
     const checked = e.target.checked;
     setAgreed(checked);
-    if (checked) setTcAgreedAt(new Date().toISOString());
+    if (checked) {
+      setTcAgreedAt(new Date().toISOString());
+      setAgreedName(name);
+      setAgreedPhone(phone);
+    }
   }
 
   function handleFile(e) {
@@ -313,6 +352,7 @@ export default function EnrollForm() {
       diet: clientType === "New" ? diet : "",
       tc_agreed_at: clientType === "New" ? tcAgreedAt : "",
       tc_version: clientType === "New" ? TC_VERSION : "",
+      amount,
     });
 
     try {
@@ -383,7 +423,7 @@ export default function EnrollForm() {
                   inputMode="tel"
                   placeholder="10-digit mobile number"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   onBlur={() => touch("phone")}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); checkPhoneAndContinue(); } }}
                 />
@@ -409,12 +449,12 @@ export default function EnrollForm() {
               <h2 className="step-title display">Your Details</h2>
               <div className={"field" + (touched.name && !isValidName(name) ? " error" : "")}>
                 <label htmlFor="clientName">Full name</label>
-                <input id="clientName" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => touch("name")} />
+                <input id="clientName" type="text" autoComplete="name" value={name} onChange={(e) => handleNameChange(e.target.value)} onBlur={() => touch("name")} />
                 <p className="error-msg">Enter your full name (at least 2 letters).</p>
               </div>
               <div className={"field" + (touched.phone && !isValidPhone(phone) ? " error" : "")}>
                 <label htmlFor="clientPhone">Phone number</label>
-                <input id="clientPhone" type="tel" autoComplete="tel" inputMode="tel" placeholder="So Ravi can reach you" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={() => touch("phone")} />
+                <input id="clientPhone" type="tel" autoComplete="tel" inputMode="tel" placeholder="So Ravi can reach you" value={phone} onChange={(e) => handlePhoneChange(e.target.value)} onBlur={() => touch("phone")} />
                 <p className="error-msg">Enter a valid 10-digit Indian mobile number.</p>
               </div>
               <div className="row2">
@@ -630,6 +670,19 @@ export default function EnrollForm() {
                 <p className="last-amount-note">You paid ₹{existingLastAmount} last time — pay the same unless Ravi told you otherwise.</p>
               )}
               <p className="amount-note">On your phone, tap &quot;Pay via UPI app&quot; to open PhonePe/GPay/Paytm directly — or scan the QR, or copy the UPI ID above into any UPI app. Confirm the amount with Ravi before paying if you haven&apos;t already.</p>
+              <div className={"field" + (touched.amount && !(amount !== "" && isValidAmount(amount)) ? " error" : "")}>
+                <label htmlFor="paidAmount">Amount you paid (₹)</label>
+                <input
+                  id="paidAmount"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="e.g. 3000"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  onBlur={() => touch("amount")}
+                />
+                <p className="error-msg">Enter the amount you paid (₹1 – ₹1,00,000).</p>
+              </div>
               <div className="actions">
                 <button type="button" className="btn btn-ghost" onClick={back}>← Back</button>
                 <button type="button" className="btn btn-primary" onClick={next}>I&apos;ve Paid — Continue →</button>
@@ -657,6 +710,7 @@ export default function EnrollForm() {
               <div className="summary">
                 <div className="summary-row"><span>Name</span><span>{clientType === "New" ? name : nameEx}</span></div>
                 <div className="summary-row"><span>Phone</span><span>{clientType === "New" ? phone : phoneEx}</span></div>
+                <div className="summary-row"><span>Amount paid</span><span>₹{amount}</span></div>
                 {clientType === "New" && (
                   <>
                     <div className="summary-row"><span>Age</span><span>{age}</span></div>

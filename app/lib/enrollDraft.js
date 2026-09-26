@@ -6,7 +6,7 @@ const FIELDS = [
   "clientType", "posInPath",
   "name", "phone", "age", "height", "weight", "diet",
   "nameEx", "phoneEx", "existingName", "existingPaymentCount", "existingLastAmount",
-  "agreed", "unlocked", "tcAgreedAt",
+  "agreed", "unlocked", "tcAgreedAt", "agreedName", "agreedPhone", "amount",
 ];
 
 export function loadDraft() {
