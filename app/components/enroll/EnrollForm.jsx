@@ -550,6 +550,14 @@ export default function EnrollForm() {
                 <div className="cycle-block pay">PAY</div>
               </div>
               <div className="tc-box" ref={setTcBox}>
+                <div className="tc-keypoints">
+                  <p className="tc-keypoints-title">⚠️ The 3 things that matter most</p>
+                  <ul>
+                    <li>No refunds, under any circumstances.</li>
+                    <li>Less than 1 hour&apos;s notice to cancel = that class is counted as done, no makeup.</li>
+                    <li>Classes run Monday–Friday only, in strict 4-week blocks.</li>
+                  </ul>
+                </div>
                 <h4>Program structure</h4>
                 <p>Training runs in 4-week blocks, counted strictly week-wise — not by calendar month or fixed start/end dates.</p>
                 <h4>Class days</h4>
@@ -557,15 +565,19 @@ export default function EnrollForm() {
                 <h4>Payment schedule</h4>
                 <p>Payment for the next 4-week block is due at the start of Week 5 of the current block.</p>
                 <h4>Refund policy</h4>
-                <p>No refunds are issued under any circumstances.</p>
+                <div className="tc-critical">
+                  <p>No refunds are issued under any circumstances.</p>
+                </div>
                 <h4>If a class is cancelled by the trainer</h4>
                 <p>A makeup class will be scheduled to cover it. Payment still continues on the normal week-wise schedule regardless of makeup classes.</p>
                 <h4>If a class is cancelled by the client</h4>
-                <ul>
-                  <li>You must inform the trainer at least 1 hour before the scheduled class.</li>
-                  <li>No notice, or less than 1 hour&apos;s notice — that class is counted as done, no makeup.</li>
-                  <li>Notice given in time — once payment for the next block (Week 5) is made, you may take a makeup class on your own, whenever you&apos;re free.</li>
-                </ul>
+                <div className="tc-critical">
+                  <ul>
+                    <li>You must inform the trainer at least 1 hour before the scheduled class.</li>
+                    <li>No notice, or less than 1 hour&apos;s notice — that class is counted as done, no makeup.</li>
+                    <li>Notice given in time — once payment for the next block (Week 5) is made, you may take a makeup class on your own, whenever you&apos;re free.</li>
+                  </ul>
+                </div>
                 <h4>Payment confirmation</h4>
                 <p>After paying, you must share a screenshot of the payment as confirmation — the next steps in this form.</p>
               </div>

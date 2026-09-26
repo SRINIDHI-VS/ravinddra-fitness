@@ -176,10 +176,20 @@ a { color: inherit; text-decoration: none; }
 .pillgroup.error .pill { border-color: var(--danger); }
 
 .tc-box { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 13px; padding: 16px 15px; height: 230px; overflow-y: auto; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); margin-bottom: 14px; }
-.tc-box h4 { color: var(--text); font-size: 13px; margin: 14px 0 4px; letter-spacing: 0.02em; }
+.tc-box h4 { color: var(--gold); font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 5px; }
 .tc-box h4:first-child { margin-top: 0; }
+.tc-keypoints + h4 { margin-top: 4px; }
 .tc-box p { margin: 0 0 4px; }
 .tc-box ul { margin: 4px 0; padding-left: 18px; }
+
+.tc-keypoints { background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--border)); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.tc-keypoints-title { color: var(--warn); font-size: 12px; font-weight: 800; margin: 0 0 6px; }
+.tc-keypoints ul { margin: 0; padding-left: 18px; }
+.tc-keypoints li { color: var(--text); font-weight: 600; margin-bottom: 3px; }
+.tc-keypoints li:last-child { margin-bottom: 0; }
+
+.tc-critical { background: var(--warn-bg); border-left: 3px solid var(--warn); border-radius: 0 8px 8px 0; padding: 8px 10px; margin: 0 0 4px; }
+.tc-critical p, .tc-critical li { color: var(--text); font-weight: 600; }
 
 .cycle-strip { display: flex; align-items: center; gap: 4px; margin: 10px 0 16px; }
 .cycle-block { flex: 1; height: 26px; border-radius: 6px; background: var(--surface-raised); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: var(--text-muted); }
