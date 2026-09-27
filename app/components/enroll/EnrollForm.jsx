@@ -338,6 +338,10 @@ export default function EnrollForm() {
       setFileError(true);
       return;
     }
+    if (amount === "" || !isValidAmount(amount)) {
+      setSubmitErrorCode("invalid_amount");
+      return;
+    }
     setSubmitting(true);
     setSubmitErrorCode(null);
 
