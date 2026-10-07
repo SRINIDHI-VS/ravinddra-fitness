@@ -179,6 +179,8 @@ a { color: inherit; text-decoration: none; }
 .field.error input { border-color: var(--danger); }
 .field.error .error-msg { display: block; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.field.row3 .error-msg { grid-column: 1 / -1; }
 
 .welcome-name { color: var(--gold); }
 .restored-note { font-size: 12px; font-weight: 700; color: var(--gold); text-align: center; margin: 0 0 12px; }

@@ -597,44 +597,12 @@ export default function EnrollForm() {
                 <span className="bubble-avatar">R</span>
                 <span className="bubble-text">A few quick numbers, so I can personalize things —</span>
               </div>
-              <div className="row2">
-                <NumberField
-                  id="clientAge"
-                  label="Age"
-                  value={age}
-                  onChange={setAge}
-                  onBlur={() => touch("age")}
-                  min={10}
-                  max={90}
-                  error={touched.age && !isInRange(age, "age")}
-                  errorMsg="Age must be between 10 and 90."
-                />
-                <NumberField
-                  id="clientHeight"
-                  label="Height (cm)"
-                  value={height}
-                  onChange={setHeight}
-                  onBlur={() => touch("height")}
-                  min={100}
-                  max={230}
-                  unit="cm"
-                  error={touched.height && !isInRange(height, "height_cm")}
-                  errorMsg="Height must be between 100 and 230 cm."
-                />
+              <div className={"field row3" + ((touched.age && !isInRange(age, "age")) || (touched.height && !isInRange(height, "height_cm")) || (touched.weight && !isInRange(weight, "weight_kg")) ? " error" : "")}>
+                <input id="clientAge" type="text" inputMode="numeric" placeholder="Age" value={age} onChange={(e) => setAge(e.target.value)} onBlur={() => touch("age")} />
+                <input id="clientHeight" type="text" inputMode="decimal" placeholder="Height cm" value={height} onChange={(e) => setHeight(e.target.value)} onBlur={() => touch("height")} />
+                <input id="clientWeight" type="text" inputMode="decimal" placeholder="Weight kg" value={weight} onChange={(e) => setWeight(e.target.value)} onBlur={() => touch("weight")} />
+                <p className="error-msg">Age 10–90, height 100–230 cm, weight 25–250 kg.</p>
               </div>
-              <NumberField
-                id="clientWeight"
-                label="Weight (kg)"
-                value={weight}
-                onChange={setWeight}
-                onBlur={() => touch("weight")}
-                min={25}
-                max={250}
-                step={0.5}
-                unit="kg"
-                error={touched.weight && !isInRange(weight, "weight_kg")}
-                errorMsg="Weight must be between 25 and 250 kg."
-              />
               <div className="bubble-prompt">
                 <span className="bubble-avatar">R</span>
                 <span className="bubble-text">How do you usually eat?</span>
@@ -1029,36 +997,6 @@ function Burst() {
   );
 }
 
-function NumberField({ id, label, value, onChange, onBlur, min, max, step = 1, unit, error, errorMsg }) {
-  function clamp(n) {
-    if (Number.isNaN(n)) return String(min);
-    return String(Math.min(max, Math.max(min, n)));
-  }
-  function bump(delta) {
-    const current = Number(value);
-    onChange(clamp((Number.isFinite(current) ? current : min) + delta));
-  }
-  return (
-    <div className={"field" + (error ? " error" : "")}>
-      <label htmlFor={id}>{label}</label>
-      <div className="stepper">
-        <button type="button" className="stepper-btn" onClick={() => bump(-step)} aria-label={"Decrease " + label}>−</button>
-        <input
-          id={id}
-          type="number"
-          inputMode="numeric"
-          className="stepper-input"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
-        />
-        {unit && <span className="stepper-unit">{unit}</span>}
-        <button type="button" className="stepper-btn" onClick={() => bump(step)} aria-label={"Increase " + label}>+</button>
-      </div>
-      <p className="error-msg">{errorMsg}</p>
-    </div>
-  );
-}
 
 function CopyUpiButton() {
   const [copied, setCopied] = useState(false);
