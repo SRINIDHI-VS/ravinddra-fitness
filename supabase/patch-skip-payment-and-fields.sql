@@ -4,7 +4,7 @@ alter table public.payments add constraint payments_status_check
   check (status = any (array['submitted'::text, 'confirmed'::text, 'rejected'::text, 'skipped'::text]));
 
 -- Extends submit_enrollment (full prior body preserved) with:
---   - wider diet options (Eggetarian, Vegan, Jain added alongside the existing Veg/Non-veg)
+--   - wider diet options (Eggetarian added alongside the existing Veg/Non-veg)
 --   - p_medical_condition / p_fitness_goal, stored on the client record
 --   - p_skip_payment: when true, p_screenshot_path/p_amount may be null and the payment row is
 --     inserted with status 'skipped' instead of the normal 'submitted'. Every other check
@@ -62,7 +62,7 @@ begin
     if p_weight_kg is null or p_weight_kg < 25 or p_weight_kg > 250 then
       raise exception 'invalid_weight';
     end if;
-    if p_diet is null or p_diet not in ('Veg','Non-veg','Eggetarian','Vegan','Jain') then
+    if p_diet is null or p_diet not in ('Veg','Non-veg','Eggetarian') then
       raise exception 'invalid_diet';
     end if;
     if p_tc_agreed_at is null then

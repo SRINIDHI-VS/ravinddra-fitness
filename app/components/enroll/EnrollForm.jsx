@@ -91,20 +91,6 @@ function DietIcon({ type }) {
           <path d="M12 3.5C8.8 3.5 5.6 9.3 5.6 14.2a6.4 6 0 0012.8 0c0-4.9-3.2-10.7-6.4-10.7z" fill="#f0dfa6" stroke="#c9a24b" strokeWidth="1.5" />
         </svg>
       );
-    case "Vegan":
-      return (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 20.5c0-6.2 2-9.6 7.2-12.7-1 6.3-3.3 10.6-7.2 12.7z" fill="#4caf5f" />
-          <path d="M12 20.5c0-6.2-2-9.6-7.2-12.7 1 6.3 3.3 10.6 7.2 12.7z" fill="#6fc17e" />
-        </svg>
-      );
-    case "Jain":
-      return (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="13.2" r="6.8" fill="none" stroke="#c9a24b" strokeWidth="1.6" />
-          <path d="M8.6 12.6c0-2.3 1.5-4.2 3.4-4.2s3.4 1.9 3.4 4.2" fill="none" stroke="#c9a24b" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-      );
     default:
       return null;
   }

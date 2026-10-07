@@ -1,6 +1,6 @@
 export const NAME_RE = /^[A-Za-z][A-Za-z .'-]{1,99}$/;
 export const PHONE_RE = /^[6-9]\d{9}$/;
-export const DIET_VALUES = ["Veg", "Non-veg", "Eggetarian", "Vegan", "Jain"];
+export const DIET_VALUES = ["Veg", "Non-veg", "Eggetarian"];
 export const CLIENT_TYPES = ["New", "Existing"];
 
 export const RANGES = {
