@@ -486,13 +486,13 @@ export default function EnrollForm() {
 
   return (
     <>
+      <div className="app app-landing">
       <div className="app-ambient" aria-hidden="true">
         <span className="app-glow app-glow-a" />
         <span className="app-glow app-glow-b" />
         <span className="app-ring" />
         <span className="app-grain" />
       </div>
-      <div className="app app-landing">
       <div className="brand">
         <div className="brand-id">
           <Image className="brand-photo" src="/ravi.jpg" alt="Ravi, personal trainer" width={96} height={94} />
@@ -510,7 +510,7 @@ export default function EnrollForm() {
           <Image className="hero-portrait-img" src="/ravi.jpg" alt="Ravi, personal trainer" width={224} height={219} />
         </div>
         <p className="hero-eyebrow">Personal Training</p>
-        <h1 className="display hero-headline">Real coaching.<br />Real results.</h1>
+        <h1 className="display hero-headline">Real coaching.<br /><span className="hero-headline-accent">Real results.</span></h1>
         <p className="hero-sub">8+ years helping people get stronger, leaner, and more consistent — one training block at a time.</p>
         <div className="hero-quote">
           <p className="hero-quote-text">&quot;I&apos;m a changed man, with more strength and more confidence.&quot;</p>
@@ -539,8 +539,10 @@ export default function EnrollForm() {
           >
           {stepKey === "phone" && (
             <>
-              <p className="step-eyebrow">Welcome</p>
-              <h2 className="step-title display">Let&apos;s get started</h2>
+              <div className="card-head">
+                <p className="step-eyebrow">Welcome</p>
+                <h2 className="step-title display">Let&apos;s get started</h2>
+              </div>
               <p className="amount-note">Enter your phone number — we&apos;ll take it from there.</p>
               <div className={"field" + (touched.phone && !isValidPhone(phone) ? " error" : "")}>
                 <label htmlFor="clientPhone0">Phone number</label>
@@ -573,8 +575,14 @@ export default function EnrollForm() {
 
           {stepKey === "details" && (
             <>
-              <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
-              <h2 className="step-title display">Your Details</h2>
+              <div className="card-head">
+                <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
+                <h2 className="step-title display">Your Details</h2>
+              </div>
+              <div className="bubble-prompt">
+                <span className="bubble-avatar">R</span>
+                <span className="bubble-text">Hey! What should I call you?</span>
+              </div>
               <div className={"field" + (touched.name && !isValidName(name) ? " error" : "")}>
                 <label htmlFor="clientName">Full name</label>
                 <input id="clientName" type="text" autoComplete="name" value={name} onChange={(e) => handleNameChange(e.target.value)} onBlur={() => touch("name")} />
@@ -584,6 +592,10 @@ export default function EnrollForm() {
                 <label htmlFor="clientPhone">Phone number</label>
                 <input id="clientPhone" type="tel" autoComplete="tel" inputMode="tel" placeholder="So Ravi can reach you" value={phone} onChange={(e) => handlePhoneChange(e.target.value)} onBlur={() => touch("phone")} />
                 <p className="error-msg">Enter a valid 10-digit Indian mobile number.</p>
+              </div>
+              <div className="bubble-prompt">
+                <span className="bubble-avatar">R</span>
+                <span className="bubble-text">A few quick numbers, so I can personalize things —</span>
               </div>
               <div className="row2">
                 <NumberField
@@ -623,6 +635,10 @@ export default function EnrollForm() {
                 error={touched.weight && !isInRange(weight, "weight_kg")}
                 errorMsg="Weight must be between 25 and 250 kg."
               />
+              <div className="bubble-prompt">
+                <span className="bubble-avatar">R</span>
+                <span className="bubble-text">How do you usually eat?</span>
+              </div>
               <div className={"field" + (touched.diet && !isValidDiet(diet) ? " error" : "")}>
                 <label>Diet</label>
                 <div className={"diet-grid" + (touched.diet && !isValidDiet(diet) ? " error" : "")} role="radiogroup" aria-label="Diet">
@@ -638,6 +654,10 @@ export default function EnrollForm() {
                 </div>
                 <p className="error-msg">Choose the option closest to how you eat.</p>
               </div>
+              <div className="bubble-prompt">
+                <span className="bubble-avatar">R</span>
+                <span className="bubble-text">Anything I should know — old injuries, conditions? Totally fine if not.</span>
+              </div>
               <div className={"field" + (touched.medicalCondition && !isValidMedicalCondition(medicalCondition) ? " error" : "")}>
                 <label htmlFor="clientMedical">Any medical conditions? (optional)</label>
                 <textarea
@@ -649,6 +669,10 @@ export default function EnrollForm() {
                   onBlur={() => touch("medicalCondition")}
                 />
                 <p className="error-msg">Keep it under 500 characters.</p>
+              </div>
+              <div className="bubble-prompt">
+                <span className="bubble-avatar">R</span>
+                <span className="bubble-text">And what are you hoping to achieve?</span>
               </div>
               <div className={"field" + (touched.fitnessGoal && !isValidFitnessGoal(fitnessGoal) ? " error" : "")}>
                 <label htmlFor="clientGoal">Fitness goal (optional)</label>
@@ -671,15 +695,17 @@ export default function EnrollForm() {
 
           {stepKey === "identify" && (
             <>
-              <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
-              <motion.h2
-                className="step-title display welcome-name"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
-                Welcome back{existingName ? ", " + existingName.split(" ")[0] : ""}!
-              </motion.h2>
+              <div className="card-head">
+                <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
+                <motion.h2
+                  className="step-title display welcome-name"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  Welcome back{existingName ? ", " + existingName.split(" ")[0] : ""}!
+                </motion.h2>
+              </div>
               {existingPaymentCount > 0 && (
                 <p className="streak-note">This will be payment #{existingPaymentCount + 1} with Ravi 💪</p>
               )}
@@ -731,8 +757,10 @@ export default function EnrollForm() {
 
           {stepKey === "terms" && (
             <>
-              <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
-              <h2 className="step-title display">Terms &amp; Conditions</h2>
+              <div className="card-head">
+                <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
+                <h2 className="step-title display">Terms &amp; Conditions</h2>
+              </div>
               <div className="cycle-strip" aria-hidden="true">
                 <div className="cycle-block">WK 1</div>
                 <div className="cycle-block">WK 2</div>
@@ -805,8 +833,10 @@ export default function EnrollForm() {
 
           {stepKey === "payment" && (
             <>
-              <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
-              <h2 className="step-title display">Payment</h2>
+              <div className="card-head">
+                <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
+                <h2 className="step-title display">Payment</h2>
+              </div>
               <div className="qr-wrap">
                 <Image src="/qr.jpg" alt="PhonePe QR code for Ravindra M B" width={190} height={328} />
               </div>
@@ -856,8 +886,10 @@ export default function EnrollForm() {
 
           {stepKey === "proof" && (
             <form onSubmit={handleSubmit}>
-              <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
-              <h2 className="step-title display">Payment Proof</h2>
+              <div className="card-head">
+                <p className="step-eyebrow">Step {posInPath + 1} of {path.steps.length}</p>
+                <h2 className="step-title display">Payment Proof</h2>
+              </div>
               <label className={"upload-box" + (fileError ? " error" : "")} htmlFor="proofFile">
                 {!previewUrl && (
                   <div>
