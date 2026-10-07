@@ -461,7 +461,7 @@ export default function EnrollForm() {
   }
 
   return (
-    <div className={"app" + (stepKey === "phone" ? " app-landing" : "")}>
+    <div className="app app-landing">
       <div className="brand">
         <div className="brand-id">
           <Image className="brand-photo" src="/ravi.jpg" alt="Ravi, personal trainer" width={96} height={94} />
@@ -473,19 +473,26 @@ export default function EnrollForm() {
         <span className="brand-tag">Enrollment</span>
       </div>
 
-      {stepKey === "phone" && (
-        <div className="hero-panel">
-          <p className="hero-eyebrow">Personal Training</p>
-          <h1 className="display hero-headline">Real coaching.<br />Real results.</h1>
-          <p className="hero-sub">8+ years helping people get stronger, leaner, and more consistent — one training block at a time.</p>
+      <div className="hero-panel">
+        <div className="hero-portrait">
+          <span className="hero-portrait-glow" aria-hidden="true" />
+          <Image className="hero-portrait-img" src="/ravi.jpg" alt="Ravi, personal trainer" width={224} height={219} />
         </div>
-      )}
+        <p className="hero-eyebrow">Personal Training</p>
+        <h1 className="display hero-headline">Real coaching.<br />Real results.</h1>
+        <p className="hero-sub">8+ years helping people get stronger, leaner, and more consistent — one training block at a time.</p>
+        <div className="hero-quote">
+          <p className="hero-quote-text">&quot;I&apos;m a changed man, with more strength and more confidence.&quot;</p>
+          <p className="hero-quote-attr">— Verified client</p>
+        </div>
+      </div>
 
       <div className="stat-row">
         <div className="stat-chip"><strong>8+</strong> yrs experience</div>
         <div className="stat-chip"><strong>1000+</strong> transformations</div>
       </div>
 
+      <div className="card-col">
       {path && stepKey !== "done" && <Rail labels={path.labels} posInPath={posInPath} />}
       {showRestoredNote && stepKey !== "done" && <p className="restored-note">↺ Continuing where you left off</p>}
 
@@ -896,6 +903,7 @@ export default function EnrollForm() {
           )}
           </motion.div>
         </AnimatePresence>
+      </div>
       </div>
 
       <footer className="foot">
