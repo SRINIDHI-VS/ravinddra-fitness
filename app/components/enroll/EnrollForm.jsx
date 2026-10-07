@@ -66,6 +66,50 @@ const STEP_VARIANTS = {
   exit: (dir) => ({ opacity: 0, x: dir >= 0 ? -16 : 16, transition: { duration: 0.2, ease: "easeIn" } }),
 };
 
+// Icon-badge per diet option — Veg/Non-veg reuse the familiar green-dot /
+// maroon-triangle mark seen on Indian food packaging so they read at a glance;
+// the rest get a simple, consistent line-icon in the same style.
+function DietIcon({ type }) {
+  switch (type) {
+    case "Veg":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" fill="none" stroke="#4caf5f" strokeWidth="2" />
+          <circle cx="12" cy="12" r="4.6" fill="#4caf5f" />
+        </svg>
+      );
+    case "Non-veg":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" fill="none" stroke="#a24a39" strokeWidth="2" />
+          <path d="M12 7.3l5.2 9H6.8z" fill="#a24a39" />
+        </svg>
+      );
+    case "Eggetarian":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3.5C8.8 3.5 5.6 9.3 5.6 14.2a6.4 6 0 0012.8 0c0-4.9-3.2-10.7-6.4-10.7z" fill="#f0dfa6" stroke="#c9a24b" strokeWidth="1.5" />
+        </svg>
+      );
+    case "Vegan":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 20.5c0-6.2 2-9.6 7.2-12.7-1 6.3-3.3 10.6-7.2 12.7z" fill="#4caf5f" />
+          <path d="M12 20.5c0-6.2-2-9.6-7.2-12.7 1 6.3 3.3 10.6 7.2 12.7z" fill="#6fc17e" />
+        </svg>
+      );
+    case "Jain":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="13.2" r="6.8" fill="none" stroke="#c9a24b" strokeWidth="1.6" />
+          <path d="M8.6 12.6c0-2.3 1.5-4.2 3.4-4.2s3.4 1.9 3.4 4.2" fill="none" stroke="#c9a24b" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function EnrollForm() {
   const [clientType, setClientType] = useState(null);
   const [posInPath, setPosInPath] = useState(0);
@@ -557,13 +601,14 @@ export default function EnrollForm() {
               />
               <div className={"field" + (touched.diet && !isValidDiet(diet) ? " error" : "")}>
                 <label>Diet</label>
-                <div className={"pillgroup" + (touched.diet && !isValidDiet(diet) ? " error" : "")} role="group" aria-label="Diet" style={{ flexWrap: "wrap" }}>
+                <div className={"diet-grid" + (touched.diet && !isValidDiet(diet) ? " error" : "")} role="radiogroup" aria-label="Diet">
                   {DIET_VALUES.map((v) => (
-                    <div key={v} className={"pill" + (diet === v ? " selected" : "")} role="button" tabIndex={0} aria-pressed={diet === v}
+                    <div key={v} className={"diet-card" + (diet === v ? " selected" : "")} role="radio" tabIndex={0} aria-checked={diet === v}
                       onClick={() => { setDiet(v); touch("diet"); }}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDiet(v); touch("diet"); } }}
-                      style={{ flex: "1 1 auto", minWidth: 84 }}>
-                      {v}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDiet(v); touch("diet"); } }}>
+                      {diet === v && <span className="diet-check">✓</span>}
+                      <span className="diet-icon"><DietIcon type={v} /></span>
+                      <span className="diet-label">{v}</span>
                     </div>
                   ))}
                 </div>
