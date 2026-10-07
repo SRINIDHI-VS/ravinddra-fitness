@@ -12,6 +12,9 @@ import {
   isInRange,
   isValidDiet,
   isValidAmount,
+  isValidMedicalCondition,
+  isValidFitnessGoal,
+  DIET_VALUES,
   MAX_FILE_BYTES,
   ALLOWED_FILE_TYPES,
 } from "@/app/lib/validators";
@@ -32,7 +35,9 @@ const ERROR_MESSAGES = {
   invalid_age: "Age must be between 10 and 90 — please go back and re-check it.",
   invalid_height: "Height must be between 100 and 230 cm — please go back and re-check it.",
   invalid_weight: "Weight must be between 25 and 250 kg — please go back and re-check it.",
-  invalid_diet: "Please go back and choose Veg or Non-veg.",
+  invalid_diet: "Please go back and choose a diet option.",
+  invalid_medical_condition: "That medical conditions note is too long — please shorten it.",
+  invalid_fitness_goal: "That fitness goal note is too long — please shorten it.",
   invalid_amount: "Please go back and enter the amount you paid.",
   terms_not_agreed: "Please go back and accept the terms & conditions first.",
   invalid_file_type: "Please upload a JPG, PNG or WebP image.",
@@ -75,6 +80,8 @@ export default function EnrollForm() {
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [diet, setDiet] = useState("");
+  const [medicalCondition, setMedicalCondition] = useState("");
+  const [fitnessGoal, setFitnessGoal] = useState("");
   const [nameEx, setNameEx] = useState("");
   const [phoneEx, setPhoneEx] = useState("");
   const [existingName, setExistingName] = useState("");
@@ -97,6 +104,8 @@ export default function EnrollForm() {
   const [fileError, setFileError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErrorCode, setSubmitErrorCode] = useState(null);
+  const [skipping, setSkipping] = useState(false);
+  const [wasSkipped, setWasSkipped] = useState(false);
 
   const [checkingPhone, setCheckingPhone] = useState(false);
   const [phoneCheckErrorCode, setPhoneCheckErrorCode] = useState(null);
@@ -180,6 +189,8 @@ export default function EnrollForm() {
         setHeight(draft.height ?? "");
         setWeight(draft.weight ?? "");
         setDiet(draft.diet ?? "");
+        setMedicalCondition(draft.medicalCondition ?? "");
+        setFitnessGoal(draft.fitnessGoal ?? "");
         setNameEx(draft.nameEx ?? "");
         setPhoneEx(draft.phoneEx ?? "");
         setExistingName(draft.existingName ?? "");
@@ -205,13 +216,13 @@ export default function EnrollForm() {
     }
     saveDraft({
       clientType, posInPath,
-      name, phone, age, height, weight, diet,
+      name, phone, age, height, weight, diet, medicalCondition, fitnessGoal,
       nameEx, phoneEx, existingName, existingPaymentCount, existingLastAmount,
       agreed, unlocked, tcAgreedAt, agreedName, agreedPhone, amount,
     });
   }, [
     draftReady, clientType, posInPath,
-    name, phone, age, height, weight, diet,
+    name, phone, age, height, weight, diet, medicalCondition, fitnessGoal,
     nameEx, phoneEx, existingName, existingPaymentCount, existingLastAmount,
     agreed, unlocked, tcAgreedAt, agreedName, agreedPhone, amount,
   ]);
@@ -245,10 +256,12 @@ export default function EnrollForm() {
     const heightOk = isInRange(height, "height_cm");
     const weightOk = isInRange(weight, "weight_kg");
     const dietOk = isValidDiet(diet);
+    const medicalOk = isValidMedicalCondition(medicalCondition);
+    const goalOk = isValidFitnessGoal(fitnessGoal);
     if (showErrors) {
-      setTouched((t) => ({ ...t, name: true, phone: true, age: true, height: true, weight: true, diet: true }));
+      setTouched((t) => ({ ...t, name: true, phone: true, age: true, height: true, weight: true, diet: true, medicalCondition: true, fitnessGoal: true }));
     }
-    return nameOk && phoneOk && ageOk && heightOk && weightOk && dietOk;
+    return nameOk && phoneOk && ageOk && heightOk && weightOk && dietOk && medicalOk && goalOk;
   }
 
   function validateIdentify(showErrors) {
@@ -316,9 +329,12 @@ export default function EnrollForm() {
       "Phone: " + (clientType === "New" ? phone : phoneEx),
     ];
     if (clientType === "New") {
-      lines.push("Age: " + age, "Height: " + height + " cm", "Weight: " + weight + " kg", "Diet: " + diet, "T&C agreed: Yes");
+      lines.push("Age: " + age, "Height: " + height + " cm", "Weight: " + weight + " kg", "Diet: " + diet);
+      if (medicalCondition.trim()) lines.push("Medical: " + medicalCondition.trim());
+      if (fitnessGoal.trim()) lines.push("Goal: " + fitnessGoal.trim());
+      lines.push("T&C agreed: Yes");
     }
-    lines.push("Payment: Done (screenshot submitted via form)");
+    lines.push(wasSkipped ? "Payment: Not yet — will pay before first session" : "Payment: Done (screenshot submitted via form)");
     return whatsappLink(lines.join("\n"));
   }
 
@@ -354,6 +370,8 @@ export default function EnrollForm() {
       height_cm: clientType === "New" ? height : "",
       weight_kg: clientType === "New" ? weight : "",
       diet: clientType === "New" ? diet : "",
+      medical_condition: clientType === "New" ? medicalCondition : "",
+      fitness_goal: clientType === "New" ? fitnessGoal : "",
       tc_agreed_at: clientType === "New" ? tcAgreedAt : "",
       tc_version: clientType === "New" ? TC_VERSION : "",
       amount,
@@ -367,9 +385,47 @@ export default function EnrollForm() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.code || "network_error");
+      setWasSkipped(false);
       setDone(true);
     } catch (err) {
       setSubmitting(false);
+      setSubmitErrorCode(err?.message || "network_error");
+    }
+  }
+
+  async function handleSkipPayment() {
+    if (clientType === "New" && !validateDetails(true)) return;
+    if (clientType === "New" && !agreed) return;
+    setSkipping(true);
+    setSubmitErrorCode(null);
+
+    const params = new URLSearchParams({
+      phone: clientType === "New" ? phone : phoneEx,
+      name: clientType === "New" ? name : nameEx,
+      client_type: clientType,
+      age: clientType === "New" ? age : "",
+      height_cm: clientType === "New" ? height : "",
+      weight_kg: clientType === "New" ? weight : "",
+      diet: clientType === "New" ? diet : "",
+      medical_condition: clientType === "New" ? medicalCondition : "",
+      fitness_goal: clientType === "New" ? fitnessGoal : "",
+      tc_agreed_at: clientType === "New" ? tcAgreedAt : "",
+      tc_version: clientType === "New" ? TC_VERSION : "",
+      skip_payment: "true",
+    });
+
+    try {
+      const res = await fetch("/api/submit-enrollment?" + params.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.code || "network_error");
+      setWasSkipped(true);
+      setDone(true);
+    } catch (err) {
+      setSkipping(false);
       setSubmitErrorCode(err?.message || "network_error");
     }
   }
@@ -486,33 +542,56 @@ export default function EnrollForm() {
                   errorMsg="Height must be between 100 and 230 cm."
                 />
               </div>
-              <div className="row2">
-                <NumberField
-                  id="clientWeight"
-                  label="Weight (kg)"
-                  value={weight}
-                  onChange={setWeight}
-                  onBlur={() => touch("weight")}
-                  min={25}
-                  max={250}
-                  step={0.5}
-                  unit="kg"
-                  error={touched.weight && !isInRange(weight, "weight_kg")}
-                  errorMsg="Weight must be between 25 and 250 kg."
-                />
-                <div className={"field" + (touched.diet && !isValidDiet(diet) ? " error" : "")}>
-                  <label>Diet</label>
-                  <div className={"pillgroup" + (touched.diet && !isValidDiet(diet) ? " error" : "")} role="group" aria-label="Diet">
-                    {["Veg", "Non-veg"].map((v) => (
-                      <div key={v} className={"pill" + (diet === v ? " selected" : "")} role="button" tabIndex={0} aria-pressed={diet === v}
-                        onClick={() => { setDiet(v); touch("diet"); }}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDiet(v); touch("diet"); } }}>
-                        {v}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="error-msg">Choose Veg or Non-veg.</p>
+              <NumberField
+                id="clientWeight"
+                label="Weight (kg)"
+                value={weight}
+                onChange={setWeight}
+                onBlur={() => touch("weight")}
+                min={25}
+                max={250}
+                step={0.5}
+                unit="kg"
+                error={touched.weight && !isInRange(weight, "weight_kg")}
+                errorMsg="Weight must be between 25 and 250 kg."
+              />
+              <div className={"field" + (touched.diet && !isValidDiet(diet) ? " error" : "")}>
+                <label>Diet</label>
+                <div className={"pillgroup" + (touched.diet && !isValidDiet(diet) ? " error" : "")} role="group" aria-label="Diet" style={{ flexWrap: "wrap" }}>
+                  {DIET_VALUES.map((v) => (
+                    <div key={v} className={"pill" + (diet === v ? " selected" : "")} role="button" tabIndex={0} aria-pressed={diet === v}
+                      onClick={() => { setDiet(v); touch("diet"); }}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDiet(v); touch("diet"); } }}
+                      style={{ flex: "1 1 auto", minWidth: 84 }}>
+                      {v}
+                    </div>
+                  ))}
                 </div>
+                <p className="error-msg">Choose the option closest to how you eat.</p>
+              </div>
+              <div className={"field" + (touched.medicalCondition && !isValidMedicalCondition(medicalCondition) ? " error" : "")}>
+                <label htmlFor="clientMedical">Any medical conditions? (optional)</label>
+                <textarea
+                  id="clientMedical"
+                  rows={2}
+                  placeholder="e.g. knee injury, high BP, asthma — leave blank if none"
+                  value={medicalCondition}
+                  onChange={(e) => setMedicalCondition(e.target.value)}
+                  onBlur={() => touch("medicalCondition")}
+                />
+                <p className="error-msg">Keep it under 500 characters.</p>
+              </div>
+              <div className={"field" + (touched.fitnessGoal && !isValidFitnessGoal(fitnessGoal) ? " error" : "")}>
+                <label htmlFor="clientGoal">Fitness goal (optional)</label>
+                <textarea
+                  id="clientGoal"
+                  rows={2}
+                  placeholder="e.g. weight loss, strength, general fitness"
+                  value={fitnessGoal}
+                  onChange={(e) => setFitnessGoal(e.target.value)}
+                  onBlur={() => touch("fitnessGoal")}
+                />
+                <p className="error-msg">Keep it under 300 characters.</p>
               </div>
               <div className="actions">
                 <button type="button" className="btn btn-ghost" onClick={back}>← Back</button>
@@ -687,9 +766,21 @@ export default function EnrollForm() {
                 />
                 <p className="error-msg">Enter the amount you paid (₹1 – ₹1,00,000).</p>
               </div>
+              {submitErrorCode && (
+                <p className="submit-error-msg show">
+                  {errorMessageFor(submitErrorCode)}{" "}
+                  <a className="submit-error-wa" href={buildFallbackWaLink()} target="_blank" rel="noopener">Message Ravi on WhatsApp →</a>
+                </p>
+              )}
               <div className="actions">
                 <button type="button" className="btn btn-ghost" onClick={back}>← Back</button>
                 <button type="button" className="btn btn-primary" onClick={next}>I&apos;ve Paid — Continue →</button>
+              </div>
+              <div style={{ marginTop: 18, textAlign: "center" }}>
+                <p style={{ color: "var(--text-muted)", fontSize: 13.5, marginBottom: 8 }}>Just exploring for now?</p>
+                <button type="button" className="btn btn-ghost" disabled={skipping} onClick={handleSkipPayment}>
+                  {skipping && <Spinner />}{skipping ? "Submitting…" : "Skip for now — I'll pay later"}
+                </button>
               </div>
             </>
           )}
@@ -721,6 +812,12 @@ export default function EnrollForm() {
                     <div className="summary-row"><span>Height</span><span>{height} cm</span></div>
                     <div className="summary-row"><span>Weight</span><span>{weight} kg</span></div>
                     <div className="summary-row"><span>Diet</span><span>{diet}</span></div>
+                    {medicalCondition.trim() && (
+                      <div className="summary-row"><span>Medical</span><span>{medicalCondition.trim()}</span></div>
+                    )}
+                    {fitnessGoal.trim() && (
+                      <div className="summary-row"><span>Goal</span><span>{fitnessGoal.trim()}</span></div>
+                    )}
                   </>
                 )}
               </div>
@@ -758,7 +855,11 @@ export default function EnrollForm() {
                 <Burst />
               </div>
               <h2 className="display">You&apos;re all set</h2>
-              <p>Ravi has received your submission — details, payment confirmation and screenshot. He&apos;ll confirm shortly.</p>
+              <p>
+                {wasSkipped
+                  ? "Ravi has received your details. You're enrolled — pay anytime before your first session."
+                  : "Ravi has received your submission — details, payment confirmation and screenshot. He'll confirm shortly."}
+              </p>
               <a className="wa-btn" href={buildWaLink()} target="_blank" rel="noopener">📲 Also send a note on WhatsApp</a>
             </div>
           )}

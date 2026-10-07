@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
-import { dedupeClients } from "@/app/lib/clients";
+import { mergeClientsWithStats } from "@/app/lib/clients";
 import { exportSessionsCsv } from "./csv";
 import LogSessionModal from "./LogSessionModal";
 import BulkLogSessionModal from "./BulkLogSessionModal";
@@ -17,7 +17,7 @@ function formatDateOnly(dateStr) {
   return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export default function AttendanceView({ rows, paymentRows, onReload }) {
+export default function AttendanceView({ rows, paymentRows, clients: clientRows, onReload }) {
   const [view, setView] = useState("table");
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -28,7 +28,7 @@ export default function AttendanceView({ rows, paymentRows, onReload }) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
 
-  const clients = dedupeClients(paymentRows).filter((c) => !c.archived);
+  const clients = mergeClientsWithStats(clientRows, paymentRows).filter((c) => !c.archived);
 
   const filtered = rows
     .filter((r) => {

@@ -4,7 +4,7 @@ const STORAGE_KEY = "raviEnroll:draft:v1";
 
 const FIELDS = [
   "clientType", "posInPath",
-  "name", "phone", "age", "height", "weight", "diet",
+  "name", "phone", "age", "height", "weight", "diet", "medicalCondition", "fitnessGoal",
   "nameEx", "phoneEx", "existingName", "existingPaymentCount", "existingLastAmount",
   "agreed", "unlocked", "tcAgreedAt", "agreedName", "agreedPhone", "amount",
 ];

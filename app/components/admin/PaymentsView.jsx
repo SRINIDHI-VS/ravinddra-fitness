@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
 import { exportPaymentsCsv } from "./csv";
-import { dedupeClients } from "@/app/lib/clients";
+import { mergeClientsWithStats } from "@/app/lib/clients";
 import { waLinkTo } from "@/app/lib/siteConfig";
 import { isValidAmount } from "@/app/lib/validators";
 import LogPaymentModal from "./LogPaymentModal";
@@ -21,6 +21,7 @@ function formatDate(iso) {
 function StatusBadge({ row }) {
   if (row.status === "confirmed") return <span className="badge badge-confirmed">Confirmed</span>;
   if (row.status === "rejected") return <span className="badge badge-rejected" title={row.rejection_reason || undefined}>Rejected</span>;
+  if (row.status === "skipped") return <span className="badge badge-type" title="Enrolled without paying yet">No payment</span>;
   return <span className="badge badge-pending">Pending</span>;
 }
 
@@ -59,7 +60,7 @@ function findPossibleDuplicate(row, allRows) {
   );
 }
 
-export default function PaymentsView({ rows, onReload }) {
+export default function PaymentsView({ rows, clients, onReload }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState(null);
@@ -302,7 +303,7 @@ export default function PaymentsView({ rows, onReload }) {
 
       {showLogModal && (
         <LogPaymentModal
-          clients={dedupeClients(rows).filter((c) => !c.archived)}
+          clients={mergeClientsWithStats(clients, rows).filter((c) => !c.archived)}
           rows={rows}
           initialClient={null}
           onClose={() => setShowLogModal(false)}

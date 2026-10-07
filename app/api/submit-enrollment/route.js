@@ -5,6 +5,8 @@ import {
   isValidDiet,
   isValidClientType,
   isValidAmount,
+  isValidMedicalCondition,
+  isValidFitnessGoal,
   MAX_FILE_BYTES,
   ALLOWED_FILE_TYPES,
 } from "@/app/lib/validators";
@@ -51,12 +53,10 @@ export async function POST(req) {
   const phone = (params.get("phone") || "").trim();
   const fileName = params.get("filename") || "proof";
   const contentType = req.headers.get("content-type") || "";
+  const skipPayment = params.get("skip_payment") === "true";
 
   if (!isValidPhone(phone)) {
     return json(400, { code: "invalid_phone" });
-  }
-  if (!ALLOWED_FILE_TYPES.includes(contentType)) {
-    return json(400, { code: "invalid_file_type" });
   }
 
   const clientType = params.get("client_type") || "";
@@ -67,9 +67,13 @@ export async function POST(req) {
   if (!isValidName(name)) {
     return json(400, { code: "invalid_name" });
   }
-  const amountRaw = (params.get("amount") || "").trim();
-  if (amountRaw === "" || !isValidAmount(amountRaw)) {
-    return json(400, { code: "invalid_amount" });
+  const medicalCondition = (params.get("medical_condition") || "").trim();
+  if (!isValidMedicalCondition(medicalCondition)) {
+    return json(400, { code: "invalid_medical_condition" });
+  }
+  const fitnessGoal = (params.get("fitness_goal") || "").trim();
+  if (!isValidFitnessGoal(fitnessGoal)) {
+    return json(400, { code: "invalid_fitness_goal" });
   }
   if (clientType === "New") {
     const diet = params.get("diet") || "";
@@ -77,6 +81,61 @@ export async function POST(req) {
     if (!isInRange(params.get("height_cm"), "height_cm")) return json(400, { code: "invalid_height" });
     if (!isInRange(params.get("weight_kg"), "weight_kg")) return json(400, { code: "invalid_weight" });
     if (!isValidDiet(diet)) return json(400, { code: "invalid_diet" });
+  }
+
+  // Skipping payment for now: no amount, no screenshot, no storage upload — just the client's
+  // details and T&C agreement go on file. The RPC marks this payment row as "skipped" so it's
+  // never mistaken for a real payment awaiting review.
+  if (skipPayment) {
+    const rpcBody = {
+      p_name: name,
+      p_phone: phone,
+      p_client_type: clientType,
+      p_screenshot_path: null,
+      p_age: numOrNull(params.get("age")),
+      p_height_cm: numOrNull(params.get("height_cm")),
+      p_weight_kg: numOrNull(params.get("weight_kg")),
+      p_diet: strOrNull(params.get("diet")),
+      p_tc_agreed_at: strOrNull(params.get("tc_agreed_at")),
+      p_tc_version: strOrNull(params.get("tc_version")),
+      p_amount: null,
+      p_transaction_ref: null,
+      p_medical_condition: strOrNull(medicalCondition),
+      p_fitness_goal: strOrNull(fitnessGoal),
+      p_skip_payment: true,
+    };
+
+    let skipRpcRes;
+    try {
+      skipRpcRes = await fetch(SUPABASE_URL + "/rest/v1/rpc/submit_enrollment", {
+        method: "POST",
+        headers: {
+          apikey: serviceKey,
+          Authorization: "Bearer " + serviceKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(rpcBody),
+      });
+    } catch (err) {
+      console.error("submit_enrollment (skip payment) request failed:", err);
+      return json(502, { code: "network_error" });
+    }
+
+    if (!skipRpcRes.ok) {
+      const detail = await skipRpcRes.json().catch(() => ({}));
+      console.error("submit_enrollment (skip payment) rejected:", skipRpcRes.status, detail);
+      return json(400, { code: detail?.message || "submission_failed" });
+    }
+
+    return json(200, { ok: true });
+  }
+
+  if (!ALLOWED_FILE_TYPES.includes(contentType)) {
+    return json(400, { code: "invalid_file_type" });
+  }
+  const amountRaw = (params.get("amount") || "").trim();
+  if (amountRaw === "" || !isValidAmount(amountRaw)) {
+    return json(400, { code: "invalid_amount" });
   }
 
   let bytes;
@@ -127,6 +186,9 @@ export async function POST(req) {
     p_tc_version: strOrNull(params.get("tc_version")),
     p_amount: numOrNull(params.get("amount")),
     p_transaction_ref: strOrNull(params.get("transaction_ref")),
+    p_medical_condition: strOrNull(medicalCondition),
+    p_fitness_goal: strOrNull(fitnessGoal),
+    p_skip_payment: false,
   };
 
   let rpcRes;

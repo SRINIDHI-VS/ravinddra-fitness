@@ -1,6 +1,6 @@
 export const NAME_RE = /^[A-Za-z][A-Za-z .'-]{1,99}$/;
 export const PHONE_RE = /^[6-9]\d{9}$/;
-export const DIET_VALUES = ["Veg", "Non-veg"];
+export const DIET_VALUES = ["Veg", "Non-veg", "Eggetarian", "Vegan", "Jain"];
 export const CLIENT_TYPES = ["New", "Existing"];
 
 export const RANGES = {
@@ -40,3 +40,14 @@ export function isValidAmount(v) {
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_FILE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+export const MEDICAL_CONDITION_MAX = 500;
+export const FITNESS_GOAL_MAX = 300;
+
+export function isValidMedicalCondition(v) {
+  return (v ?? "").trim().length <= MEDICAL_CONDITION_MAX;
+}
+
+export function isValidFitnessGoal(v) {
+  return (v ?? "").trim().length <= FITNESS_GOAL_MAX;
+}

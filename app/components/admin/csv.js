@@ -1,5 +1,3 @@
-import { dedupeClients } from "@/app/lib/clients";
-
 function csvField(v) {
   let s = v == null ? "" : String(v);
   if (/^[=+\-@]/.test(s)) s = "'" + s;
@@ -28,9 +26,8 @@ export function exportPaymentsCsv(rows) {
   URL.revokeObjectURL(url);
 }
 
-export function exportClientsCsv(rows) {
-  const clients = dedupeClients(rows);
-  const header = ["Name", "Phone", "Age", "Height (cm)", "Weight (kg)", "Diet", "Total Payments", "T&C Agreed", "Last Payment Date", "Last Payment Status", "Archived"];
+export function exportClientsCsv(clients, rows) {
+  const header = ["Name", "Phone", "Age", "Height (cm)", "Weight (kg)", "Diet", "Medical Condition", "Fitness Goal", "Total Payments", "T&C Agreed", "Last Payment Date", "Last Payment Status", "Archived"];
   const lines = [header.map(csvField).join(",")];
   clients.forEach((c) => {
     const history = rows
@@ -38,7 +35,7 @@ export function exportClientsCsv(rows) {
       .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
     const last = history[0];
     lines.push(
-      [c.name, c.phone, c.age, c.height_cm, c.weight_kg, c.diet, c.paymentCount, c.tcAgreedAt, last ? last.submitted_at : "", last ? last.status : "", c.archived ? "Yes" : "No"]
+      [c.name, c.phone, c.age, c.height_cm, c.weight_kg, c.diet, c.medical_condition, c.fitness_goal, c.paymentCount, c.tcAgreedAt, last ? last.submitted_at : "", last ? last.status : "", c.archived ? "Yes" : "No"]
         .map(csvField)
         .join(",")
     );

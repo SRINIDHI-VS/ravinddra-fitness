@@ -10,14 +10,13 @@ import AttendanceView from "./AttendanceView";
 import { ToastProvider } from "./Toast";
 import { computeRenewals } from "@/app/lib/renewals";
 
-function computeStats(rows) {
-  const uniqueClients = new Set();
+function computeStats(rows, clientRows) {
   const now = new Date();
   let thisMonthCount = 0;
   let pendingCount = 0;
   let revenueThisMonth = 0;
   rows.forEach((r) => {
-    if (r.clients) uniqueClients.add(r.clients.id);
+    if (r.status === "skipped") return; // not a real payment — doesn't count toward payment stats
     const d = new Date(r.submitted_at);
     if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) thisMonthCount++;
     if (r.status === "submitted") pendingCount++;
@@ -26,7 +25,7 @@ function computeStats(rows) {
       if (cd.getFullYear() === now.getFullYear() && cd.getMonth() === now.getMonth()) revenueThisMonth += r.amount;
     }
   });
-  return { clients: uniqueClients.size, thisMonth: thisMonthCount, pending: pendingCount, revenueThisMonth };
+  return { clients: clientRows.length, thisMonth: thisMonthCount, pending: pendingCount, revenueThisMonth };
 }
 
 export default function AdminDashboard() {
@@ -37,6 +36,8 @@ export default function AdminDashboard() {
   const [view, setView] = useState("payments");
   const [sessionRows, setSessionRows] = useState([]);
   const [sessionsReady, setSessionsReady] = useState(false);
+  const [clientRows, setClientRows] = useState([]);
+  const [clientsReady, setClientsReady] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data?.session || null));
@@ -77,18 +78,39 @@ export default function AdminDashboard() {
       });
   }, []);
 
+  const loadClients = useCallback(() => {
+    supabase
+      .from("clients")
+      .select("id, name, phone, age, height_cm, weight_kg, diet, medical_condition, fitness_goal, archived, archived_at, last_reminded_at")
+      .order("name", { ascending: true })
+      .then(({ data, error }) => {
+        setClientsReady(true);
+        if (error) {
+          console.error(error);
+          return;
+        }
+        setClientRows(data || []);
+      });
+  }, []);
+
+  const reloadClientsAndPayments = useCallback(() => {
+    loadPayments();
+    loadClients();
+  }, [loadPayments, loadClients]);
+
   useEffect(() => {
     if (!session) return;
     queueMicrotask(() => {
       loadPayments();
       loadSessions();
+      loadClients();
     });
-  }, [session, loadPayments, loadSessions]);
+  }, [session, loadPayments, loadSessions, loadClients]);
 
   if (session === undefined) return null;
   if (!session) return <LoginScreen />;
 
-  const stats = computeStats(rows);
+  const stats = computeStats(rows, clientRows);
   const renewalsDue = computeRenewals(rows).filter((r) => r.status !== "ok").length;
 
   return (
@@ -103,7 +125,7 @@ export default function AdminDashboard() {
       </header>
 
       <div className="stat-grid">
-        <div className="stat-card"><span className="stat-num">{loadingRows ? "–" : stats.clients}</span><span className="stat-label">Total clients</span></div>
+        <div className="stat-card"><span className="stat-num">{loadingRows || !clientsReady ? "–" : stats.clients}</span><span className="stat-label">Total clients</span></div>
         <div className="stat-card"><span className="stat-num">{loadingRows ? "–" : stats.thisMonth}</span><span className="stat-label">Payments this month</span></div>
         <div className="stat-card" title="Confirmed payments this month with an amount on file. Older confirmations logged without an amount aren't counted.">
           <span className="stat-num">{loadingRows ? "–" : "₹" + stats.revenueThisMonth.toLocaleString("en-IN")}</span>
@@ -123,14 +145,19 @@ export default function AdminDashboard() {
 
       {loadingRows && <div className="table-wrap"><table className="payments-table"><tbody><tr><td className="loading-cell">Loading…</td></tr></tbody></table></div>}
       {!loadingRows && loadError && <div className="table-wrap"><table className="payments-table"><tbody><tr><td className="loading-cell">Couldn&apos;t load data — refresh to retry.</td></tr></tbody></table></div>}
-      {!loadingRows && !loadError && view === "payments" && <PaymentsView rows={rows} onReload={loadPayments} />}
-      {!loadingRows && !loadError && view === "clients" && <ClientsView rows={rows} onReload={loadPayments} />}
+      {!loadingRows && !loadError && view === "payments" && <PaymentsView rows={rows} clients={clientRows} onReload={reloadClientsAndPayments} />}
+      {!loadingRows && !loadError && view === "clients" && !clientsReady && (
+        <div className="table-wrap"><table className="payments-table"><tbody><tr><td className="loading-cell">Loading…</td></tr></tbody></table></div>
+      )}
+      {!loadingRows && !loadError && view === "clients" && clientsReady && (
+        <ClientsView clients={clientRows} rows={rows} onReload={reloadClientsAndPayments} />
+      )}
       {!loadingRows && !loadError && view === "renewals" && <RenewalsView rows={rows} onReload={loadPayments} />}
       {!loadingRows && !loadError && view === "attendance" && !sessionsReady && (
         <div className="table-wrap"><table className="payments-table"><tbody><tr><td className="loading-cell">Loading…</td></tr></tbody></table></div>
       )}
       {!loadingRows && !loadError && view === "attendance" && sessionsReady && (
-        <AttendanceView rows={sessionRows} paymentRows={rows} onReload={loadSessions} />
+        <AttendanceView rows={sessionRows} paymentRows={rows} clients={clientRows} onReload={loadSessions} />
       )}
     </div>
     </ToastProvider>

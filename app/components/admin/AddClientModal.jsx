@@ -19,15 +19,15 @@ function optionalInRange(v, key) {
   return isInRange(v, key);
 }
 
-export default function EditClientModal({ client, onClose, onSaved }) {
-  const [name, setName] = useState(client.name || "");
-  const [phone, setPhone] = useState(client.phone || "");
-  const [age, setAge] = useState(client.age ?? "");
-  const [height, setHeight] = useState(client.height_cm ?? "");
-  const [weight, setWeight] = useState(client.weight_kg ?? "");
-  const [diet, setDiet] = useState(client.diet || "");
-  const [medicalCondition, setMedicalCondition] = useState(client.medical_condition || "");
-  const [fitnessGoal, setFitnessGoal] = useState(client.fitness_goal || "");
+export default function AddClientModal({ onClose, onSaved }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [age, setAge] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [diet, setDiet] = useState("");
+  const [medicalCondition, setMedicalCondition] = useState("");
+  const [fitnessGoal, setFitnessGoal] = useState("");
   const [touched, setTouched] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -65,26 +65,23 @@ export default function EditClientModal({ client, onClose, onSaved }) {
 
     setSaving(true);
     setError(null);
-    const { error: updateErr } = await supabase
-      .from("clients")
-      .update({
-        name: name.trim(),
-        phone: phone.trim(),
-        age: age === "" ? null : Number(age),
-        height_cm: height === "" ? null : Number(height),
-        weight_kg: weight === "" ? null : Number(weight),
-        diet: diet || null,
-        medical_condition: medicalCondition.trim() || null,
-        fitness_goal: fitnessGoal.trim() || null,
-      })
-      .eq("id", client.id);
+    const { error: insertErr } = await supabase.from("clients").insert({
+      name: name.trim(),
+      phone: phone.trim(),
+      age: age === "" ? null : Number(age),
+      height_cm: height === "" ? null : Number(height),
+      weight_kg: weight === "" ? null : Number(weight),
+      diet: diet || null,
+      medical_condition: medicalCondition.trim() || null,
+      fitness_goal: fitnessGoal.trim() || null,
+    });
     setSaving(false);
 
-    if (updateErr) {
+    if (insertErr) {
       setError(
-        updateErr.message && updateErr.message.includes("duplicate")
-          ? "Another client already has that phone number."
-          : "Could not update. Try again."
+        insertErr.message && insertErr.message.includes("duplicate")
+          ? "A client with that phone number already exists."
+          : "Could not save. Try again."
       );
       return;
     }
@@ -104,16 +101,16 @@ export default function EditClientModal({ client, onClose, onSaved }) {
         transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="editClientTitle"
+        aria-labelledby="addClientTitle"
       >
-        <h3 className="modal-title" id="editClientTitle">Edit Client</h3>
-        <p className="modal-sub">Update any of their details on file.</p>
+        <h3 className="modal-title" id="addClientTitle">Add Client</h3>
+        <p className="modal-sub">For a client you're onboarding directly — no payment or T&amp;C record will exist for them yet.</p>
 
         <form onSubmit={handleSubmit}>
           <div className={"field" + (touched.name && !nameOk ? " error" : "")}>
-            <label htmlFor="editClientName">Full name</label>
+            <label htmlFor="addClientName">Full name</label>
             <input
-              id="editClientName"
+              id="addClientName"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -124,9 +121,9 @@ export default function EditClientModal({ client, onClose, onSaved }) {
             <p className="error-msg">Enter their full name (at least 2 letters).</p>
           </div>
           <div className={"field" + (touched.phone && !phoneOk ? " error" : "")}>
-            <label htmlFor="editClientPhone">Phone number</label>
+            <label htmlFor="addClientPhone">Phone number</label>
             <input
-              id="editClientPhone"
+              id="addClientPhone"
               type="tel"
               inputMode="tel"
               value={phone}
@@ -139,9 +136,9 @@ export default function EditClientModal({ client, onClose, onSaved }) {
 
           <div className="row2">
             <div className={"field" + (touched.age && !ageOk ? " error" : "")}>
-              <label htmlFor="editClientAge">Age</label>
+              <label htmlFor="addClientAge">Age (optional)</label>
               <input
-                id="editClientAge"
+                id="addClientAge"
                 type="number"
                 inputMode="numeric"
                 min={10}
@@ -154,9 +151,9 @@ export default function EditClientModal({ client, onClose, onSaved }) {
               <p className="error-msg">Age must be between 10 and 90, or left blank.</p>
             </div>
             <div className={"field" + (touched.height && !heightOk ? " error" : "")}>
-              <label htmlFor="editClientHeight">Height (cm)</label>
+              <label htmlFor="addClientHeight">Height (cm, optional)</label>
               <input
-                id="editClientHeight"
+                id="addClientHeight"
                 type="number"
                 inputMode="numeric"
                 min={100}
@@ -171,9 +168,9 @@ export default function EditClientModal({ client, onClose, onSaved }) {
           </div>
 
           <div className={"field" + (touched.weight && !weightOk ? " error" : "")}>
-            <label htmlFor="editClientWeight">Weight (kg)</label>
+            <label htmlFor="addClientWeight">Weight (kg, optional)</label>
             <input
-              id="editClientWeight"
+              id="addClientWeight"
               type="number"
               inputMode="decimal"
               step={0.5}
@@ -187,7 +184,7 @@ export default function EditClientModal({ client, onClose, onSaved }) {
             <p className="error-msg">Weight must be between 25 and 250 kg, or left blank.</p>
           </div>
           <div className="field">
-            <label>Diet</label>
+            <label>Diet (optional)</label>
             <div className="pillgroup" role="group" aria-label="Diet" style={{ flexWrap: "wrap" }}>
               {DIET_OPTIONS.map((v) => (
                 <div
@@ -212,11 +209,11 @@ export default function EditClientModal({ client, onClose, onSaved }) {
           </div>
 
           <div className={"field" + (touched.medicalCondition && !medicalOk ? " error" : "")}>
-            <label htmlFor="editClientMedical">Medical conditions</label>
+            <label htmlFor="addClientMedical">Medical conditions (optional)</label>
             <textarea
-              id="editClientMedical"
+              id="addClientMedical"
               rows={2}
-              placeholder="e.g. knee injury, high BP, asthma — leave blank if none"
+              placeholder="e.g. knee injury, high BP, asthma"
               value={medicalCondition}
               onChange={(e) => setMedicalCondition(e.target.value)}
               onBlur={() => touch("medicalCondition")}
@@ -226,9 +223,9 @@ export default function EditClientModal({ client, onClose, onSaved }) {
           </div>
 
           <div className={"field" + (touched.fitnessGoal && !goalOk ? " error" : "")}>
-            <label htmlFor="editClientGoal">Fitness goal</label>
+            <label htmlFor="addClientGoal">Fitness goal (optional)</label>
             <textarea
-              id="editClientGoal"
+              id="addClientGoal"
               rows={2}
               placeholder="e.g. weight loss, strength, general fitness"
               value={fitnessGoal}
@@ -244,7 +241,7 @@ export default function EditClientModal({ client, onClose, onSaved }) {
           <div className="actions">
             <button type="button" className="btn btn-ghost" onClick={safeClose} disabled={saving}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving || !canSubmit}>
-              {saving && <span className="spinner" aria-hidden="true" />}{saving ? "Saving…" : "Save"}
+              {saving && <span className="spinner" aria-hidden="true" />}{saving ? "Saving…" : "Add Client"}
             </button>
           </div>
         </form>
