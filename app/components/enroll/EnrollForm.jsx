@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import Rail from "./Rail";
+import WhatsAppFab from "@/app/components/WhatsAppFab";
 import { CONTACT, upiDeepLink, whatsappLink } from "@/app/lib/siteConfig";
 import {
   isValidName,
@@ -66,9 +67,6 @@ const STEP_VARIANTS = {
   exit: (dir) => ({ opacity: 0, x: dir >= 0 ? -16 : 16, transition: { duration: 0.2, ease: "easeIn" } }),
 };
 
-// Icon-badge per diet option — Veg/Non-veg reuse the familiar green-dot /
-// maroon-triangle mark seen on Indian food packaging so they read at a glance;
-// the rest get a simple, consistent line-icon in the same style.
 function DietIcon({ type }) {
   switch (type) {
     case "Veg":
@@ -260,6 +258,32 @@ export default function EnrollForm() {
   useEffect(() => {
     if (done) clearDraft();
   }, [done]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const fine = window.matchMedia("(pointer: fine)").matches;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!fine || reduceMotion) return;
+
+    let activeBtn = null;
+    function onMove(e) {
+      const btn = e.target.closest ? e.target.closest(".btn-primary") : null;
+      if (btn !== activeBtn) {
+        if (activeBtn) activeBtn.style.transform = "";
+        activeBtn = btn;
+      }
+      if (!btn || btn.disabled) return;
+      const rect = btn.getBoundingClientRect();
+      const relX = e.clientX - (rect.left + rect.width / 2);
+      const relY = e.clientY - (rect.top + rect.height / 2);
+      btn.style.transform = `translate(${relX * 0.15}px, ${relY * 0.25}px)`;
+    }
+    document.addEventListener("pointermove", onMove);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      if (activeBtn) activeBtn.style.transform = "";
+    };
+  }, []);
 
   function handleNameChange(v) {
     setName(v);
@@ -461,7 +485,14 @@ export default function EnrollForm() {
   }
 
   return (
-    <div className="app app-landing">
+    <>
+      <div className="app-ambient" aria-hidden="true">
+        <span className="app-glow app-glow-a" />
+        <span className="app-glow app-glow-b" />
+        <span className="app-ring" />
+        <span className="app-grain" />
+      </div>
+      <div className="app app-landing">
       <div className="brand">
         <div className="brand-id">
           <Image className="brand-photo" src="/ravi.jpg" alt="Ravi, personal trainer" width={96} height={94} />
@@ -488,8 +519,8 @@ export default function EnrollForm() {
       </div>
 
       <div className="stat-row">
-        <div className="stat-chip"><strong>8+</strong> yrs experience</div>
-        <div className="stat-chip"><strong>1000+</strong> transformations</div>
+        <div className="stat-chip"><strong><CountUp to={8} suffix="+" /></strong> yrs experience</div>
+        <div className="stat-chip"><strong><CountUp to={1000} suffix="+" /></strong> transformations</div>
       </div>
 
       <div className="card-col">
@@ -911,12 +942,35 @@ export default function EnrollForm() {
         <br />
         <Link href="/status">Already enrolled? Check your status →</Link>
       </footer>
-    </div>
+      </div>
+      <WhatsAppFab />
+    </>
   );
 }
 
 function Spinner() {
   return <span className="spinner" aria-hidden="true" />;
+}
+
+function CountUp({ to, suffix = "", duration = 1200 }) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setValue(to);
+      return;
+    }
+    let raf;
+    const start = performance.now();
+    function tick(now) {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * to));
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to, duration]);
+  return <>{value}{suffix}</>;
 }
 
 function Burst() {
